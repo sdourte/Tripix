@@ -1,24 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "../app/supabase";
 
-type Room = { id: string; name: string; code: string; owner_user_id: string | null };
+type Room = { id: string; code: string; name: string };
 
 export default function JoinRoom() {
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");      // ex: TRIP25
+  const [code, setCode] = useState("");
   const [pseudo, setPseudo] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function sendMagicLink() {
-    const cleanEmail = email.trim();
-    if (!cleanEmail) return alert("Entre un email valide.");
-    const { error } = await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) alert(error.message);
-    else alert("Email envoyé ✅ Ouvre le lien puis reviens ici.");
-  }
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Pas connecté : on envoie vers /login
+        location.href = "/login";
+      }
+    })();
+  }, []);
 
   async function joinAfterLogin() {
     const cleanCode = code.trim();
@@ -28,51 +26,36 @@ export default function JoinRoom() {
 
     setLoading(true);
     try {
-      // 1) Vérifier que tu es connecté
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-      const user = userData.user;
-      if (!user) {
-        alert("Pas connecté : utilise d'abord le lien reçu par email.");
-        return;
-      }
+      // 1) user connecté ?
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { location.href = "/login"; return; }
 
-      // 2) Trouver la salle par code
+      // 2) chercher la room
       const { data: rooms, error: e1 } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("code", cleanCode)
-        .limit(1);
-
+        .from("rooms").select("*").eq("code", cleanCode).limit(1);
       if (e1) throw e1;
-      if (!rooms || rooms.length === 0) {
-        alert("Salle introuvable. Vérifie le code.");
-        return;
-      }
+      if (!rooms?.[0]) { alert("Salle introuvable."); return; }
       const room: Room = rooms[0];
 
-      // 3) Créer / mettre à jour ton player (évite l'erreur de doublon)
+      // 3) créer/mettre à jour le player (clé unique room_id+auth_user_id)
       const { data: playerRow, error: e2 } = await supabase
         .from("players")
         .upsert(
           { room_id: room.id, auth_user_id: user.id, pseudo: cleanPseudo },
-          { onConflict: "room_id,auth_user_id" } // <- clé unique
+          { onConflict: "room_id,auth_user_id" }
         )
         .select()
         .single();
-
       if (e2) throw e2;
 
-      // 4) Mémoriser et rediriger
       localStorage.setItem("room_id", room.id);
       localStorage.setItem("player_id", playerRow.id);
-      window.location.href = "/today";
+      location.href = "/today";
     } catch (err: unknown) {
-      console.error(err);
       if (err instanceof Error) {
-        alert(err.message);
+        alert(err.message || "Erreur pour rejoindre la salle.");
       } else {
-        alert("Erreur inattendue lors de la connexion à la salle.");
+        alert("Erreur pour rejoindre la salle.");
       }
     } finally {
       setLoading(false);
@@ -81,53 +64,23 @@ export default function JoinRoom() {
 
   return (
     <div className="max-w-md mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Tripix — Rejoindre une salle</h1>
-
-      <label className="block text-sm font-medium">Email</label>
-      <input
-        className="border p-2 w-full rounded"
-        placeholder="ton.email@exemple.com"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button
-        className="border px-3 py-2 rounded hover:bg-gray-50"
-        onClick={sendMagicLink}
-        disabled={!email.trim() || loading}
-      >
-        Recevoir le lien par email
-      </button>
-
-      <div className="h-px bg-gray-200 my-2" />
+      <h1 className="text-2xl font-bold">Rejoindre une salle</h1>
 
       <label className="block text-sm font-medium">Code de salle</label>
-      <input
-        className="border p-2 w-full rounded"
-        placeholder="ex: TRIP25"
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-      />
+      <input className="border p-2 w-full rounded" placeholder="ex: TRIP25"
+             value={code} onChange={e=>setCode(e.target.value)} />
 
       <label className="block text-sm font-medium">Pseudo</label>
-      <input
-        className="border p-2 w-full rounded"
-        placeholder="Ton pseudo"
-        value={pseudo}
-        onChange={(e) => setPseudo(e.target.value)}
-      />
+      <input className="border p-2 w-full rounded" placeholder="Ton pseudo"
+             value={pseudo} onChange={e=>setPseudo(e.target.value)} />
 
-      <button
-        className="border px-3 py-2 rounded hover:bg-gray-50 disabled:opacity-60"
-        onClick={joinAfterLogin}
-        disabled={loading}
-      >
+      <button className="border px-3 py-2 rounded hover:bg-gray-50 disabled:opacity-60"
+              onClick={joinAfterLogin} disabled={loading}>
         {loading ? "Connexion…" : "Entrer"}
       </button>
 
       <p className="text-sm text-gray-500">
-        Astuce : crée la salle dans Supabase → <code>rooms</code> avec un{" "}
-        <code>code</code> (ex: TRIP25), puis rejoins-la ici.
+        Non connecté ? <a href="/login" className="underline">Va à la page de connexion</a>.
       </p>
     </div>
   );
