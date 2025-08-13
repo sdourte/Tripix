@@ -9,6 +9,7 @@ import Vote from "./pages/Vote";
 import Board from "./pages/Board";
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
+import RequireAuth from "./components/RequireAuth";
 import "./index.css";
 
 const qc = new QueryClient();
@@ -19,11 +20,13 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/login" element={<Login/>} />
           <Route path="/" element={<JoinRoom />} />
-          <Route element={<Layout />}>
-            <Route path="/today" element={<Today />} />
-            <Route path="/upload" element={<Upload/>}/>
-            <Route path="/vote" element={<Vote/>}/>
-            <Route path="/board" element={<Board/>}/>
+          <Route element={<RequireAuth/>}>
+            <Route element={<Layout />}>
+              <Route path="/today" element={<Today />} />
+              <Route path="/upload" element={<Upload/>}/>
+              <Route path="/vote" element={<Vote/>}/>
+              <Route path="/board" element={<Board/>}/>
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>
