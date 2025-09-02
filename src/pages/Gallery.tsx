@@ -62,7 +62,7 @@ export default function Gallery() {
     if (currentIndex + 1 < photos.length) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      setMessage("Vous avez voté sur toutes les photos du jour !");
+      setMessage("Vous avez voté pour toutes les photos du jour !");
     }
   };
 
