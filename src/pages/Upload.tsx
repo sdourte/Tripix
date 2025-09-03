@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
 export default function Upload() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [message, setMessage] = useState("");
   const [themeId, setThemeId] = useState<string | null>(null);
   const [themeName, setThemeName] = useState("À définir");
@@ -25,52 +25,106 @@ export default function Upload() {
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setFiles(selectedFiles);
     }
   };
 
   const handleUpload = async () => {
-    if (!file) return alert("Choisis un fichier");
+    if (files.length === 0) return alert("Choisis au moins un fichier");
 
-    setMessage("Upload en cours...");
+    setMessage("Vérification des quotas...");
 
     const { data: sessionData } = await supabase.auth.getSession();
     const user = sessionData?.session?.user;
     if (!user) return alert("Utilisateur non connecté");
 
-    const safeFileName = file.name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-_.]/g, "");
-    const filePath = `${user.id}/${Date.now()}-${safeFileName}`;
+    // Fenêtre "aujourd'hui"
+    const startLocal = new Date();
+    startLocal.setHours(0, 0, 0, 0);
+    const endLocal = new Date();
+    endLocal.setHours(23, 59, 59, 999);
+    const toUtcIso = (d: Date) =>
+      new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString();
 
-    // Upload dans le bucket "photos"
-    const { error: uploadError } = await supabase.storage.from("photos").upload(filePath, file);
-    if (uploadError) return alert(uploadError.message);
+    const startISO = toUtcIso(startLocal);
+    const endISO = toUtcIso(endLocal);
 
-    // Récupérer l'URL publique
-    const publicData = supabase.storage.from("photos").getPublicUrl(filePath);
-    if (!publicData?.data?.publicUrl) return alert("Impossible de récupérer l'URL publique");
+    // Vérifier combien de photos l'utilisateur a déjà uploadées aujourd'hui
+    const { data: existingPhotos, error: fetchError } = await supabase
+      .from("photos")
+      .select("id")
+      .eq("user_id", user.id)
+      .gte("created_at", startISO)
+      .lte("created_at", endISO);
 
-    const url = publicData.data.publicUrl ?? "";
+    if (fetchError) {
+      alert(fetchError.message);
+      return;
+    }
 
-    // Insérer la photo dans la table photos
-    const { error: dbError } = await supabase.from("photos").insert({
-      user_id: user.id,
-      theme_id: themeId, // on insère l'ID du thème
-      url: url
-    });
+    const remainingQuota = 3 - (existingPhotos?.length || 0);
+    if (remainingQuota <= 0) {
+      alert("⚠️ Vous avez déjà uploadé 3 photos aujourd'hui !");
+      return;
+    }
 
-    if (dbError) return alert(dbError.message);
+    // Si plus de fichiers que quota restant → on limite
+    const filesToUpload = files.slice(0, remainingQuota);
 
-    setMessage("Upload réussi ! 🎉");
-    setFile(null);
+    setMessage(`Upload de ${filesToUpload.length} photo(s) en cours...`);
+
+    for (const file of filesToUpload) {
+      const safeFileName = file.name
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9-_.]/g, "");
+      const filePath = `${user.id}/${Date.now()}-${safeFileName}`;
+
+      // Upload dans le bucket "photos"
+      const { error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(filePath, file);
+      if (uploadError) {
+        alert(uploadError.message);
+        continue; // on passe à la photo suivante
+      }
+
+      // Récupérer l'URL publique
+      const publicData = supabase.storage.from("photos").getPublicUrl(filePath);
+      if (!publicData?.data?.publicUrl) {
+        alert("Impossible de récupérer l'URL publique");
+        continue;
+      }
+
+      const url = publicData.data.publicUrl ?? "";
+
+      // Insérer la photo dans la table photos
+      const { error: dbError } = await supabase.from("photos").insert({
+        user_id: user.id,
+        theme_id: themeId,
+        url,
+      });
+
+      if (dbError) {
+        alert(dbError.message);
+        continue;
+      }
+    }
+
+    setMessage("✅ Upload terminé !");
+    setFiles([]);
   };
 
   return (
     <div style={{ padding: "50px", textAlign: "center" }}>
-      <h1>Uploader une photo</h1>
-      <p>Thème du jour : <strong>{themeName}</strong></p>
-      <input type="file" accept="image/*" onChange={handleFileChange} />
-      <br /><br />
+      <h1>Uploader vos photos</h1>
+      <p>
+        Thème du jour : <strong>{themeName}</strong>
+      </p>
+      <input type="file" accept="image/*" multiple onChange={handleFileChange} />
+      <br />
+      <br />
       <button onClick={handleUpload}>Envoyer</button>
       <p>{message}</p>
     </div>
