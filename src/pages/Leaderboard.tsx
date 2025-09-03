@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 
 type LeaderboardEntry = {
-  email: string;
+  pseudo: string;
   total_score: number;
   photos_count: number;
   votes_received: number;
@@ -53,9 +53,9 @@ export default function Leaderboard() {
         </thead>
         <tbody>
           {leaderboard.map((entry, index) => (
-            <tr key={entry.email}>
+            <tr key={entry.pseudo}>
               <td style={{ border: "1px solid black", padding: "10px" }}>{index + 1}</td>
-              <td style={{ border: "1px solid black", padding: "10px" }}>{entry.email}</td>
+              <td style={{ border: "1px solid black", padding: "10px" }}>{entry.pseudo}</td>
               <td style={{ border: "1px solid black", padding: "10px" }}>{entry.total_score}</td>
               <td style={{ border: "1px solid black", padding: "10px" }}>{entry.photos_count}</td>
               <td style={{ border: "1px solid black", padding: "10px" }}>{entry.votes_received}</td>
