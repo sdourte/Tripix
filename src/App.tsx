@@ -1,22 +1,52 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Login from "./pages/Login";
-import Upload from "./pages/Upload";
-import Gallery from "./pages/Gallery";
-import Leaderboard from "./pages/Leaderboard";
+import { Box, Button, Container, Stack, Typography } from '@mui/material'
 
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/upload" element={<Upload />} />
-        <Route path="/gallery" element={<Gallery />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-      </Routes>
-    </Router>
-  );
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Container maxWidth="sm">
+        <Stack spacing={4} alignItems="center" textAlign="center">
+          <Box>
+            <Typography variant="h2" component="h1" fontWeight={700}>
+              Tripix
+            </Typography>
+
+            <Typography
+              variant="h6"
+              color="text.secondary"
+              sx={{ mt: 1 }}
+            >
+              Le jeu photo de vos voyages
+            </Typography>
+          </Box>
+
+          <Stack spacing={2} width="100%">
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+            >
+              Créer une salle
+            </Button>
+
+            <Button
+              variant="outlined"
+              size="large"
+              fullWidth
+            >
+              Rejoindre une salle
+            </Button>
+          </Stack>
+        </Stack>
+      </Container>
+    </Box>
+  )
 }
 
-export default App;
+export default App
