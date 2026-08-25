@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import {
   getRoomByCode,
   getRoomPlayers,
@@ -36,6 +37,7 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Chargement initial de la salle
   useEffect(() => {
     async function loadRoom() {
       if (!code) {
@@ -63,6 +65,42 @@ export default function RoomPage() {
 
     loadRoom()
   }, [code])
+
+  // Synchronisation en temps réel des joueurs
+  useEffect(() => {
+    if (!room) {
+      return
+    }
+
+    const channel = supabase
+      .channel(`room-${room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'players',
+          filter: `room_id=eq.${room.id}`,
+        },
+        async () => {
+          try {
+            const updatedPlayers = await getRoomPlayers(room.id)
+
+            setPlayers(updatedPlayers)
+          } catch (err) {
+            console.error(
+              'Impossible de mettre à jour les joueurs :',
+              err,
+            )
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [room])
 
   if (loading) {
     return (

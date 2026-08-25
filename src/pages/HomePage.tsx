@@ -1,61 +1,44 @@
-import { Button, Container, Stack, Typography } from '@mui/material'
+import { useEffect } from 'react'
+import {
+  CircularProgress,
+  Container,
+} from '@mui/material'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 export default function HomePage() {
   const navigate = useNavigate()
 
+  useEffect(() => {
+    async function checkSession() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (session) {
+        navigate('/dashboard', {
+          replace: true,
+        })
+      } else {
+        navigate('/login', {
+          replace: true,
+        })
+      }
+    }
+
+    checkSession()
+  }, [navigate])
+
   return (
     <Container
-      maxWidth="sm"
       sx={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      <Stack
-        spacing={4}
-        width="100%"
-        alignItems="center"
-        textAlign="center"
-      >
-        <Stack spacing={1}>
-          <Typography
-            variant="h1"
-            component="h1"
-            fontWeight={800}
-          >
-            Tripix
-          </Typography>
-
-          <Typography
-            variant="h6"
-            color="text.secondary"
-          >
-            Le jeu photo de vos voyages
-          </Typography>
-        </Stack>
-
-        <Stack spacing={2} width="100%">
-          <Button
-            variant="contained"
-            size="large"
-            onClick={() => navigate('/create-room')}
-          >
-            Créer une salle
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="large"
-            fullWidth
-            onClick={() => navigate('/join-room')}
-          >
-            Rejoindre une salle
-          </Button>
-
-        </Stack>
-      </Stack>
+      <CircularProgress />
     </Container>
   )
 }

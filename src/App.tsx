@@ -1,33 +1,73 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import HomePage from './pages/HomePage'
-import CreateRoomPage from './pages/CreateRoomPage'
-import RoomPage from './pages/RoomPage'
-import JoinRoomPage from './pages/JoinRoomPage'
 
-function App() {
+import HomePage from './pages/HomePage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import DashboardPage from './pages/DashboardPage'
+import CreateRoomPage from './pages/CreateRoomPage'
+import JoinRoomPage from './pages/JoinRoomPage'
+import RoomPage from './pages/RoomPage'
+
+import ProtectedRoute from './components/ProtectedRoute'
+
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-
+        {/* Point d'entrée */}
         <Route
-          path="/create-room"
-          element={<CreateRoomPage />}
+          path="/"
+          element={<HomePage />}
+        />
+
+        {/* Authentification */}
+        <Route
+          path="/login"
+          element={<LoginPage />}
         />
 
         <Route
-          path="/room/:code"
-          element={<RoomPage />}
+          path="/register"
+          element={<RegisterPage />}
+        />
+
+        {/* Application */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/create-room"
+          element={
+            <ProtectedRoute>
+              <CreateRoomPage />
+            </ProtectedRoute>
+          }
         />
 
         <Route
           path="/join-room"
-          element={<JoinRoomPage />}
+          element={
+            <ProtectedRoute>
+              <JoinRoomPage />
+            </ProtectedRoute>
+          }
         />
 
+        <Route
+          path="/room/:code"
+          element={
+            <ProtectedRoute>
+              <RoomPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   )
 }
-
-export default App
