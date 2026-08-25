@@ -22,7 +22,7 @@ function generateRoomCode(length = 6): string {
 export async function createRoom(
   roomName: string,
   playerName: string,
-): Promise<CreateRoomResult> {
+) {
   const {
     data: { user },
     error: authError,
@@ -34,72 +34,102 @@ export async function createRoom(
     )
   }
 
-  let code = generateRoomCode()
+  const { data, error } = await supabase.rpc(
+    'create_room',
+    {
+      room_name: roomName,
+      player_name: playerName,
+    },
+  )
 
-  let { data: room, error: roomError } = await supabase
-    .from('rooms')
-    .insert({
-      name: roomName,
-      code,
-      admin_id: user.id,
-    })
-    .select('id, code')
-    .single()
-
-  /*
-   * Le code est unique.
-   * Dans le cas extrêmement improbable d'une collision,
-   * on génère simplement un nouveau code.
-   */
-  if (roomError?.code === '23505') {
-    code = generateRoomCode()
-
-    const result = await supabase
-      .from('rooms')
-      .insert({
-        name: roomName,
-        code,
-        admin_id: user.id,
-      })
-      .select('id, code')
-      .single()
-
-    room = result.data
-    roomError = result.error
-  }
-
-  if (roomError || !room) {
+  if (error || !data) {
     throw new Error(
-      roomError?.message ?? 'Impossible de créer la salle.',
-    )
-  }
-
-  const { data: player, error: playerError } = await supabase
-    .from('players')
-    .insert({
-      room_id: room.id,
-      user_id: user.id,
-      name: playerName,
-    })
-    .select('id')
-    .single()
-
-  if (playerError || !player) {
-    // Si la création du joueur échoue, on évite de garder
-    // une salle sans son administrateur.
-    await supabase
-      .from('rooms')
-      .delete()
-      .eq('id', room.id)
-
-    throw new Error(
-      playerError?.message ?? 'Impossible de créer le joueur.',
+      error?.message ?? 'Impossible de créer la salle.',
     )
   }
 
   return {
-    roomId: room.id,
+    roomId: data.room_id,
+    code: data.code,
+    playerId: data.player_id,
+  }
+}
+
+export async function getRoomByCode(code: string) {
+  const { data, error } = await supabase
+    .from('rooms')
+    .select(`
+      id,
+      name,
+      code,
+      admin_id
+    `)
+    .eq('code', code)
+    .single()
+
+  if (error) {
+    throw new Error(
+      error.message || 'Impossible de récupérer la salle.',
+    )
+  }
+
+  return data
+}
+
+export async function getRoomPlayers(roomId: string) {
+  const { data, error } = await supabase
+    .from('players')
+    .select(`
+      id,
+      user_id,
+      name
+    `)
+    .eq('room_id', roomId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    throw new Error(
+      error.message || 'Impossible de récupérer les joueurs.',
+    )
+  }
+
+  return data
+}
+
+export async function joinRoom(
+  roomCode: string,
+  playerName: string,
+) {
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.signInAnonymously()
+
+  if (authError || !user) {
+    throw new Error(
+      authError?.message ?? 'Impossible de créer une session.',
+    )
+  }
+
+  const { data, error } = await supabase.rpc(
+    'join_room',
+    {
+      room_code: roomCode,
+      player_name: playerName,
+    },
+  )
+
+  if (error || !data) {
+    throw new Error(
+      error?.message ?? 'Impossible de rejoindre la salle.',
+    )
+  }
+
+  const room = await getRoomByCode(roomCode)
+
+  return {
+    roomId: data.id,
+    playerId: data.id,
     code: room.code,
-    playerId: player.id,
   }
 }

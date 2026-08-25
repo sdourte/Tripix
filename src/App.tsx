@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import CreateRoomPage from './pages/CreateRoomPage'
 import RoomPage from './pages/RoomPage'
+import JoinRoomPage from './pages/JoinRoomPage'
 
 function App() {
   return (
@@ -18,6 +19,12 @@ function App() {
           path="/room/:code"
           element={<RoomPage />}
         />
+
+        <Route
+          path="/join-room"
+          element={<JoinRoomPage />}
+        />
+
       </Routes>
     </BrowserRouter>
   )

@@ -48,9 +48,12 @@ export default function HomePage() {
           <Button
             variant="outlined"
             size="large"
+            fullWidth
+            onClick={() => navigate('/join-room')}
           >
             Rejoindre une salle
           </Button>
+
         </Stack>
       </Stack>
     </Container>
