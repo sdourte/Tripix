@@ -22,6 +22,23 @@ export interface UserRoom {
   player_name: string
 }
 
+export type DayStatus =
+  | 'upcoming'
+  | 'active'
+  | 'submission'
+  | 'voting'
+  | 'finished'
+
+export interface Day {
+  id: string
+  room_id: string
+  day_number: number
+  title: string | null
+  theme: string | null
+  status: DayStatus
+  created_at: string
+}
+
 /**
  * Crée une nouvelle salle.
  *
@@ -153,9 +170,6 @@ export async function getRoomPlayers(
 /**
  * Récupère toutes les salles auxquelles
  * l'utilisateur actuellement connecté participe.
- *
- * On part de players car un utilisateur peut
- * participer à plusieurs salles.
  */
 export async function getUserRooms(): Promise<
   UserRoom[]
@@ -221,3 +235,62 @@ export async function getUserRooms(): Promise<
     }
   })
 }
+
+/**
+ * Récupère toutes les journées d'une salle.
+ */
+export async function getRoomDays(
+  roomId: string,
+): Promise<Day[]> {
+  const { data, error } = await supabase
+    .from('days')
+    .select(`
+      id,
+      room_id,
+      day_number,
+      title,
+      theme,
+      status,
+      created_at
+    `)
+    .eq('room_id', roomId)
+    .order('day_number', {
+      ascending: true,
+    })
+
+  if (error) {
+    console.error('Erreur getRoomDays:', error)
+
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/**
+ * Crée une nouvelle journée.
+ *
+ * La vérification de l'admin est effectuée
+ * côté PostgreSQL dans create_day().
+ */
+export async function createDay(
+  roomId: string,
+  title: string,
+  theme: string,
+): Promise<Day> {
+  const { data, error } = await supabase.rpc(
+    'create_day',
+    {
+      target_room_id: roomId,
+      day_title: title,
+      day_theme: theme,
+    },
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
