@@ -294,3 +294,21 @@ export async function createDay(
   return data
 }
 
+export async function updateDayStatus(
+  dayId: string,
+  status: DayStatus,
+): Promise<Day> {
+  const { data, error } = await supabase.rpc(
+    'update_day_status',
+    {
+      target_day_id: dayId,
+      new_status: status,
+    },
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}

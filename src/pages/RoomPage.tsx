@@ -19,6 +19,7 @@ import {
   getRoomByCode,
   getRoomDays,
   getRoomPlayers,
+  updateDayStatus,
   type Day,
   type Player,
   type Room,
@@ -32,16 +33,17 @@ export default function RoomPage() {
   const [room, setRoom] = useState<Room | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [days, setDays] = useState<Day[]>([])
-  const [userId, setUserId] = useState<string | null>(
-    null,
-  )
+  const [userId, setUserId] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  /**
-   * Charge les données initiales de la salle.
+  /*
+   * ============================================================
+   * Chargement initial de la salle
+   * ============================================================
    */
+
   useEffect(() => {
     async function loadRoom() {
       if (!code) {
@@ -51,6 +53,7 @@ export default function RoomPage() {
       }
 
       try {
+        // Récupérer l'utilisateur connecté
         const user = await getCurrentUser()
 
         if (!user) {
@@ -63,8 +66,10 @@ export default function RoomPage() {
 
         setUserId(user.id)
 
+        // Récupérer la salle
         const roomData = await getRoomByCode(code)
 
+        // Récupérer joueurs + journées en parallèle
         const [
           playersData,
           daysData,
@@ -90,17 +95,23 @@ export default function RoomPage() {
     loadRoom()
   }, [code])
 
-  /**
-   * Realtime pour les joueurs et les journées.
+  /*
+   * ============================================================
+   * Realtime
+   * ============================================================
    */
+
   useEffect(() => {
     if (!room) {
       return
     }
 
-    /**
-     * Realtime — joueurs
+    /*
+     * ------------------------------------------------------------
+     * Realtime — Joueurs
+     * ------------------------------------------------------------
      */
+
     const playersChannel = supabase
       .channel(`room-${room.id}-players`)
       .on(
@@ -127,9 +138,12 @@ export default function RoomPage() {
       )
       .subscribe()
 
-    /**
-     * Realtime — journées
+    /*
+     * ------------------------------------------------------------
+     * Realtime — Journées
+     * ------------------------------------------------------------
      */
+
     const daysChannel = supabase
       .channel(`room-${room.id}-days`)
       .on(
@@ -156,18 +170,21 @@ export default function RoomPage() {
       )
       .subscribe()
 
+    /*
+     * Nettoyage lorsque la page est quittée
+     */
     return () => {
       supabase.removeChannel(playersChannel)
       supabase.removeChannel(daysChannel)
     }
   }, [room])
 
-  /**
-   * Création d'une journée.
-   *
-   * Pour le moment on utilise prompt()
-   * afin de tester rapidement toute la logique.
+  /*
+   * ============================================================
+   * Création d'une journée
+   * ============================================================
    */
+
   async function handleCreateDay() {
     if (!room) {
       return
@@ -192,16 +209,19 @@ export default function RoomPage() {
     try {
       setError('')
 
-      const newDay = await createDay(
+      await createDay(
         room.id,
         title,
         theme,
       )
 
-      setDays((currentDays) => [
-        ...currentDays,
-        newDay,
-      ])
+      /*
+       * Le Realtime va normalement mettre à jour
+       * automatiquement la liste des journées.
+       *
+       * On ne fait donc pas de setDays ici pour
+       * éviter d'avoir potentiellement un doublon.
+       */
     } catch (err) {
       setError(
         err instanceof Error
@@ -211,9 +231,43 @@ export default function RoomPage() {
     }
   }
 
-  /**
-   * Chargement initial.
+  /*
+   * ============================================================
+   * Changement de statut d'une journée
+   * ============================================================
    */
+
+  async function handleUpdateDayStatus(
+    dayId: string,
+    status: Day['status'],
+  ) {
+    try {
+      setError('')
+
+      await updateDayStatus(
+        dayId,
+        status,
+      )
+
+      /*
+       * Là encore, le Realtime s'occupe de mettre
+       * l'affichage à jour.
+       */
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de modifier la journée.',
+      )
+    }
+  }
+
+  /*
+   * ============================================================
+   * État de chargement
+   * ============================================================
+   */
+
   if (loading) {
     return (
       <Container
@@ -229,9 +283,12 @@ export default function RoomPage() {
     )
   }
 
-  /**
-   * Erreur ou salle inexistante.
+  /*
+   * ============================================================
+   * Erreur lors du chargement
+   * ============================================================
    */
+
   if (error && !room) {
     return (
       <Container
@@ -239,11 +296,15 @@ export default function RoomPage() {
         sx={{ py: 5 }}
       >
         <Alert severity="error">
-          {error || 'Salle introuvable.'}
+          {error}
         </Alert>
       </Container>
     )
   }
+
+  /*
+   * Sécurité supplémentaire
+   */
 
   if (!room) {
     return (
@@ -258,7 +319,19 @@ export default function RoomPage() {
     )
   }
 
+  /*
+   * ============================================================
+   * Vérifier si l'utilisateur est administrateur
+   * ============================================================
+   */
+
   const isAdmin = room.admin_id === userId
+
+  /*
+   * ============================================================
+   * Interface
+   * ============================================================
+   */
 
   return (
     <Container
@@ -267,7 +340,10 @@ export default function RoomPage() {
     >
       <Stack spacing={3}>
 
-        {/* Informations générales */}
+        {/* =====================================================
+            En-tête de la salle
+            ===================================================== */}
+
         <Box>
           <Typography
             variant="h4"
@@ -281,7 +357,10 @@ export default function RoomPage() {
           </Typography>
         </Box>
 
-        {/* Erreur */}
+        {/* =====================================================
+            Erreur
+            ===================================================== */}
+
         {error && (
           <Alert
             severity="error"
@@ -291,7 +370,10 @@ export default function RoomPage() {
           </Alert>
         )}
 
-        {/* Code de la salle */}
+        {/* =====================================================
+            Code de la salle
+            ===================================================== */}
+
         <Paper
           elevation={0}
           sx={{
@@ -326,7 +408,10 @@ export default function RoomPage() {
           </Typography>
         </Paper>
 
-        {/* Joueurs */}
+        {/* =====================================================
+            Liste des joueurs
+            ===================================================== */}
+
         <Paper
           elevation={0}
           sx={{
@@ -336,6 +421,7 @@ export default function RoomPage() {
           }}
         >
           <Stack spacing={2}>
+
             <Typography
               variant="h6"
               fontWeight={700}
@@ -346,6 +432,7 @@ export default function RoomPage() {
             <Divider />
 
             <Stack spacing={1.5}>
+
               {players.map((player) => (
                 <Box
                   key={player.id}
@@ -371,11 +458,15 @@ export default function RoomPage() {
                   )}
                 </Box>
               ))}
+
             </Stack>
           </Stack>
         </Paper>
 
-        {/* Journées */}
+        {/* =====================================================
+            Liste des journées
+            ===================================================== */}
+
         <Paper
           elevation={0}
           sx={{
@@ -386,7 +477,10 @@ export default function RoomPage() {
         >
           <Stack spacing={2}>
 
-            {/* Titre + bouton admin */}
+            {/* -------------------------------------------------
+                Titre + bouton Ajouter
+                ------------------------------------------------- */}
+
             <Stack
               direction="row"
               justifyContent="space-between"
@@ -412,12 +506,20 @@ export default function RoomPage() {
 
             <Divider />
 
-            {/* Aucune journée */}
+            {/* -------------------------------------------------
+                Aucune journée
+                ------------------------------------------------- */}
+
             {days.length === 0 ? (
               <Typography color="text.secondary">
                 Aucune journée n'a encore été créée.
               </Typography>
             ) : (
+
+              /* -------------------------------------------------
+                 Journées existantes
+                 ------------------------------------------------- */
+
               <Stack spacing={2}>
 
                 {days.map((day) => (
@@ -430,7 +532,9 @@ export default function RoomPage() {
                       borderColor: 'divider',
                     }}
                   >
-                    <Stack spacing={0.5}>
+                    <Stack spacing={1.5}>
+
+                      {/* Numéro du jour */}
 
                       <Typography
                         variant="body2"
@@ -440,6 +544,8 @@ export default function RoomPage() {
                         JOUR {day.day_number}
                       </Typography>
 
+                      {/* Nom */}
+
                       <Typography
                         variant="h6"
                         fontWeight={700}
@@ -447,9 +553,13 @@ export default function RoomPage() {
                         {day.title}
                       </Typography>
 
+                      {/* Thème */}
+
                       <Typography>
                         Thème : {day.theme}
                       </Typography>
+
+                      {/* Statut */}
 
                       <Typography
                         variant="body2"
@@ -457,6 +567,93 @@ export default function RoomPage() {
                       >
                         Statut : {day.status}
                       </Typography>
+
+                      {/* -------------------------------------------------
+                          Boutons de contrôle ADMIN
+                          ------------------------------------------------- */}
+
+                      {isAdmin && (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
+
+                          {/* upcoming → active */}
+
+                          {day.status ===
+                            'upcoming' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                handleUpdateDayStatus(
+                                  day.id,
+                                  'active',
+                                )
+                              }
+                            >
+                              Démarrer
+                            </Button>
+                          )}
+
+                          {/* active → submission */}
+
+                          {day.status ===
+                            'active' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                handleUpdateDayStatus(
+                                  day.id,
+                                  'submission',
+                                )
+                              }
+                            >
+                              Ouvrir les soumissions
+                            </Button>
+                          )}
+
+                          {/* submission → voting */}
+
+                          {day.status ===
+                            'submission' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                handleUpdateDayStatus(
+                                  day.id,
+                                  'voting',
+                                )
+                              }
+                            >
+                              Commencer les votes
+                            </Button>
+                          )}
+
+                          {/* voting → finished */}
+
+                          {day.status ===
+                            'voting' && (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                handleUpdateDayStatus(
+                                  day.id,
+                                  'finished',
+                                )
+                              }
+                            >
+                              Terminer la journée
+                            </Button>
+                          )}
+
+                        </Stack>
+                      )}
 
                     </Stack>
                   </Paper>
