@@ -9,6 +9,7 @@ import JoinRoomPage from './pages/JoinRoomPage'
 import RoomPage from './pages/RoomPage'
 import DayPage from './pages/DayPage'
 import SlideshowPage from './pages/SlideshowPage'
+import VotingPage from './pages/VotingPage'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -78,6 +79,11 @@ export default function App() {
         <Route
           path="/room/:code/day/:dayId/slideshow"
           element={<SlideshowPage />}
+        />
+
+        <Route
+          path="/day/:dayId/voting"
+          element={<VotingPage />}
         />
 
       </Routes>

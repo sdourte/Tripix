@@ -470,7 +470,7 @@ export default function SlideshowPage() {
 
       await startDayVoting(dayId)
 
-      navigate(`/day/${dayId}`)
+      navigate(`/day/${dayId}/voting`)
     } catch (err) {
       console.error(
         'Erreur lancement votes:',

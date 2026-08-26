@@ -1866,38 +1866,45 @@ export default function DayPage() {
             VOTING
             ==================================================== */}
 
-        {day.status ===
-          'voting' && (
+        {day.status === 'voting' && (
           <Paper
             elevation={0}
             sx={{
               p: 3,
-              border:
-                '1px solid',
-              borderColor:
-                'divider',
-              textAlign:
-                'center',
+              border: '1px solid',
+              borderColor: 'divider',
+              textAlign: 'center',
             }}
           >
-            <Typography
-              variant="h6"
-              fontWeight={700}
-            >
-              Les votes sont
-              ouverts
-            </Typography>
+            <Stack spacing={2}>
+              <Box>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                >
+                  Les votes sont ouverts
+                </Typography>
 
-            <Typography
-              color="text.secondary"
-              sx={{
-                mt: 1,
-              }}
-            >
-              Les photos sont
-              maintenant
-              verrouillées.
-            </Typography>
+                <Typography
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  Note les photos des autres
+                  participants de 1 à 5 points.
+                </Typography>
+              </Box>
+
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() =>
+                  window.location.href =
+                    `/day/${day.id}/voting`
+                }
+              >
+                Ouvrir la galerie de vote
+              </Button>
+            </Stack>
           </Paper>
         )}
 

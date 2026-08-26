@@ -40,17 +40,15 @@ export interface Day {
   created_at: string
 }
 
-export interface Photo {
-  id: string
-  day_id: string
-  player_id: string
-  storage_path: string
-  photo_number: number
-  created_at: string
-}
+/* ============================================================
+   ROOMS
+   ============================================================ */
 
 /**
  * Crée une nouvelle salle.
+ *
+ * L'utilisateur connecté devient automatiquement
+ * administrateur de la salle.
  */
 export async function createRoom(
   roomName: string,
@@ -172,7 +170,8 @@ export async function getRoomPlayers(
 }
 
 /**
- * Récupère toutes les salles de l'utilisateur.
+ * Récupère toutes les salles auxquelles
+ * l'utilisateur actuellement connecté participe.
  */
 export async function getUserRooms(): Promise<
   UserRoom[]
@@ -239,6 +238,10 @@ export async function getUserRooms(): Promise<
   })
 }
 
+/* ============================================================
+   DAYS
+   ============================================================ */
+
 /**
  * Récupère toutes les journées d'une salle.
  */
@@ -298,7 +301,7 @@ export async function createDay(
 }
 
 /**
- * Met à jour le statut d'une journée.
+ * Modifie le statut d'une journée.
  */
 export async function updateDayStatus(
   dayId: string,
@@ -319,80 +322,16 @@ export async function updateDayStatus(
   return data
 }
 
+/* ============================================================
+   PLAYERS
+   ============================================================ */
+
 /**
- * Lance le diaporama.
+ * Récupère le joueur correspondant à l'utilisateur
+ * actuellement connecté dans une salle donnée.
  *
- * Seul l'administrateur de la salle peut le faire,
- * et uniquement lorsque tous les joueurs ont
- * envoyé leurs 3 photos.
- */
-export async function startDaySlideshow(
-  dayId: string,
-): Promise<Day> {
-  const { data, error } =
-    await supabase.rpc(
-      'start_day_slideshow',
-      {
-        target_day_id: dayId,
-      },
-    )
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-/**
- * Lance la phase de vote.
- *
- * Seul l'administrateur peut passer du
- * diaporama aux votes.
- */
-export async function startDayVoting(
-  dayId: string,
-): Promise<Day> {
-  const { data, error } =
-    await supabase.rpc(
-      'start_day_voting',
-      {
-        target_day_id: dayId,
-      },
-    )
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return data
-}
-
-/**
- * Vérifie si tous les joueurs ont envoyé
- * leurs 3 photos.
- */
-export async function areAllDayPhotosSubmitted(
-  dayId: string,
-): Promise<boolean> {
-  const { data, error } =
-    await supabase.rpc(
-      'are_all_day_photos_submitted',
-      {
-        target_day_id: dayId,
-      },
-    )
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return Boolean(data)
-}
-
-/**
- * Récupère le joueur correspondant
- * à l'utilisateur connecté.
+ * IMPORTANT :
+ * Cette fonction attend bien un roomId.
  */
 export async function getCurrentPlayer(
   roomId: string,
@@ -414,28 +353,69 @@ export async function getCurrentPlayer(
 
   const { data, error } = await supabase
     .from('players')
-    .select('*')
+    .select('id, user_id, name')
     .eq('room_id', roomId)
     .eq('user_id', user.id)
     .single()
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(
+      'Impossible de retrouver ton joueur dans cette salle.',
+    )
   }
 
   return data
 }
 
 /**
- * Ajoute une photo ou remplace une photo
- * existante.
+ * Récupère le joueur actuellement connecté
+ * à partir d'un identifiant de journée.
+ *
+ * La journée permet d'abord de retrouver la salle,
+ * puis le joueur dans cette salle.
+ */
+export async function getCurrentPlayerForDay(
+  dayId: string,
+): Promise<Player> {
+  const { data: day, error: dayError } =
+    await supabase
+      .from('days')
+      .select('room_id')
+      .eq('id', dayId)
+      .single()
+
+  if (dayError || !day) {
+    throw new Error(
+      'Impossible de retrouver la salle de cette journée.',
+    )
+  }
+
+  return getCurrentPlayer(day.room_id)
+}
+
+/* ============================================================
+   PHOTOS
+   ============================================================ */
+
+export interface Photo {
+  id: string
+  day_id: string
+  player_id: string
+  storage_path: string
+  photo_number: number
+  slideshow_order: number | null
+  created_at: string
+}
+
+/**
+ * Ajoute une photo dans la base de données.
  */
 export async function addPhoto(
   dayId: string,
   playerId: string,
   storagePath: string,
   photoNumber: number,
-): Promise<Photo> {
+) {
   const { data, error } =
     await supabase.rpc(
       'add_photo',
@@ -451,11 +431,11 @@ export async function addPhoto(
     throw new Error(error.message)
   }
 
-  return data as Photo
+  return data
 }
 
 /**
- * Récupère les photos d'un joueur.
+ * Récupère les photos d'un joueur pour une journée.
  */
 export async function getPlayerPhotos(
   dayId: string,
@@ -463,7 +443,15 @@ export async function getPlayerPhotos(
 ): Promise<Photo[]> {
   const { data, error } = await supabase
     .from('photos')
-    .select('*')
+    .select(`
+      id,
+      day_id,
+      player_id,
+      storage_path,
+      photo_number,
+      slideshow_order,
+      created_at
+    `)
     .eq('day_id', dayId)
     .eq('player_id', playerId)
     .order('photo_number', {
@@ -478,29 +466,7 @@ export async function getPlayerPhotos(
 }
 
 /**
- * Récupère toutes les photos d'une journée
- * dans un ordre aléatoire.
- */
-export async function getDaySlideshowPhotos(
-  dayId: string,
-): Promise<Photo[]> {
-  const { data, error } =
-    await supabase.rpc(
-      'get_day_slideshow_photos',
-      {
-        target_day_id: dayId,
-      },
-    )
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return (data ?? []) as Photo[]
-}
-
-/**
- * Génère une URL temporaire pour une photo.
+ * Génère une URL signée pour une photo.
  */
 export async function getPhotoUrl(
   storagePath: string,
@@ -522,26 +488,194 @@ export async function getPhotoUrl(
   return data.signedUrl
 }
 
-/**
- * Remplace un fichier existant dans Storage.
- */
-export async function replaceStoragePhoto(
-  storagePath: string,
-  file: File,
-): Promise<void> {
-  const { error } =
-    await supabase.storage
-      .from('tripix-photos')
-      .upload(
-        storagePath,
-        file,
-        {
-          upsert: true,
-          contentType: file.type,
-        },
-      )
+/* ============================================================
+   SLIDESHOW
+   ============================================================ */
+
+export interface SlideshowPhoto extends Photo {
+  player_name?: string
+  day_number?: number
+  day_theme?: string | null
+}
+
+export async function prepareRoomSlideshow(
+  roomId: string,
+) {
+  const { data, error } =
+    await supabase.rpc(
+      'prepare_room_slideshow',
+      {
+        target_room_id: roomId,
+      },
+    )
 
   if (error) {
     throw new Error(error.message)
+  }
+
+  return data
+}
+
+export async function getRoomSlideshowPhotos(
+  roomId: string,
+): Promise<Photo[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_room_slideshow_photos',
+      {
+        target_room_id: roomId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Récupère les photos du diaporama d'une journée.
+ */
+export async function getDaySlideshowPhotos(
+  dayId: string,
+): Promise<Photo[]> {
+  const { data: day, error: dayError } =
+    await supabase
+      .from('days')
+      .select('room_id')
+      .eq('id', dayId)
+      .single()
+
+  if (dayError || !day) {
+    throw new Error(
+      'Impossible de retrouver la salle de cette journée.',
+    )
+  }
+
+  return getRoomSlideshowPhotos(
+    day.room_id,
+  )
+}
+
+/**
+ * Passe toutes les journées de la salle
+ * en phase de vote.
+ */
+export async function startDayVoting(
+  dayId: string,
+) {
+  const { data, error } =
+    await supabase.rpc(
+      'start_day_voting',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/* ============================================================
+   VOTING
+   ============================================================ */
+
+export interface VotingPhoto extends Photo {
+  player_name: string
+}
+
+export interface VoteInput {
+  photo_id: string
+  points: number
+}
+
+export interface Vote {
+  photo_id: string
+  points: number
+}
+
+/**
+ * Récupère toutes les photos d'une journée
+ * pendant la phase de vote.
+ *
+ * La fonction SQL retourne également les propres
+ * photos du joueur connecté.
+ */
+export async function getDayVotingPhotos(
+  dayId: string,
+): Promise<VotingPhoto[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_day_voting_photos',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Récupère les votes déjà enregistrés
+ * par le joueur actuellement connecté.
+ */
+export async function getMyVotes(
+  dayId: string,
+): Promise<Vote[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_my_votes',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Enregistre ou modifie un vote.
+ *
+ * IMPORTANT :
+ * La fonction SQL s'appelle submit_photo_vote.
+ */
+export async function submitVote(
+  photoId: string,
+  points: number,
+): Promise<Vote> {
+  const { data, error } =
+    await supabase.rpc(
+      'submit_photo_vote',
+      {
+        target_photo_id: photoId,
+        target_points: points,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data) {
+    throw new Error(
+      'Aucun vote n’a été retourné par le serveur.',
+    )
+  }
+
+  return {
+    photo_id: data.photo_id,
+    points: data.points,
   }
 }
