@@ -10,7 +10,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
 
@@ -29,6 +29,7 @@ import { getCurrentUser } from '../services/authService'
 
 export default function RoomPage() {
   const { code } = useParams<{ code: string }>()
+  const navigate = useNavigate()
 
   const [room, setRoom] = useState<Room | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
@@ -53,7 +54,9 @@ export default function RoomPage() {
       }
 
       try {
-        // Récupérer l'utilisateur connecté
+        setError('')
+
+        // Utilisateur connecté
         const user = await getCurrentUser()
 
         if (!user) {
@@ -69,14 +72,12 @@ export default function RoomPage() {
         // Récupérer la salle
         const roomData = await getRoomByCode(code)
 
-        // Récupérer joueurs + journées en parallèle
-        const [
-          playersData,
-          daysData,
-        ] = await Promise.all([
-          getRoomPlayers(roomData.id),
-          getRoomDays(roomData.id),
-        ])
+        // Récupérer les joueurs et les journées
+        const [playersData, daysData] =
+          await Promise.all([
+            getRoomPlayers(roomData.id),
+            getRoomDays(roomData.id),
+          ])
 
         setRoom(roomData)
         setPlayers(playersData)
@@ -97,7 +98,7 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * Realtime
+   * Realtime — Joueurs
    * ============================================================
    */
 
@@ -105,12 +106,6 @@ export default function RoomPage() {
     if (!room) {
       return
     }
-
-    /*
-     * ------------------------------------------------------------
-     * Realtime — Joueurs
-     * ------------------------------------------------------------
-     */
 
     const playersChannel = supabase
       .channel(`room-${room.id}-players`)
@@ -138,11 +133,21 @@ export default function RoomPage() {
       )
       .subscribe()
 
-    /*
-     * ------------------------------------------------------------
-     * Realtime — Journées
-     * ------------------------------------------------------------
-     */
+    return () => {
+      supabase.removeChannel(playersChannel)
+    }
+  }, [room])
+
+  /*
+   * ============================================================
+   * Realtime — Journées
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (!room) {
+      return
+    }
 
     const daysChannel = supabase
       .channel(`room-${room.id}-days`)
@@ -170,11 +175,7 @@ export default function RoomPage() {
       )
       .subscribe()
 
-    /*
-     * Nettoyage lorsque la page est quittée
-     */
     return () => {
-      supabase.removeChannel(playersChannel)
       supabase.removeChannel(daysChannel)
     }
   }, [room])
@@ -194,7 +195,7 @@ export default function RoomPage() {
       'Nom de la journée :',
     )
 
-    if (!title) {
+    if (!title?.trim()) {
       return
     }
 
@@ -202,7 +203,7 @@ export default function RoomPage() {
       'Thème de la journée :',
     )
 
-    if (!theme) {
+    if (!theme?.trim()) {
       return
     }
 
@@ -211,16 +212,13 @@ export default function RoomPage() {
 
       await createDay(
         room.id,
-        title,
-        theme,
+        title.trim(),
+        theme.trim(),
       )
 
       /*
-       * Le Realtime va normalement mettre à jour
-       * automatiquement la liste des journées.
-       *
-       * On ne fait donc pas de setDays ici pour
-       * éviter d'avoir potentiellement un doublon.
+       * Le Realtime va automatiquement
+       * mettre la liste à jour.
        */
     } catch (err) {
       setError(
@@ -233,7 +231,7 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * Changement de statut d'une journée
+   * Changement du statut d'une journée
    * ============================================================
    */
 
@@ -250,8 +248,8 @@ export default function RoomPage() {
       )
 
       /*
-       * Là encore, le Realtime s'occupe de mettre
-       * l'affichage à jour.
+       * Le Realtime mettra automatiquement
+       * l'interface à jour.
        */
     } catch (err) {
       setError(
@@ -264,7 +262,23 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * État de chargement
+   * Ouvrir une journée
+   * ============================================================
+   */
+
+  function handleOpenDay(dayId: string) {
+    if (!room) {
+      return
+    }
+
+    navigate(
+      `/room/${room.code}/day/${dayId}`,
+    )
+  }
+
+  /*
+   * ============================================================
+   * Loading
    * ============================================================
    */
 
@@ -285,7 +299,7 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * Erreur lors du chargement
+   * Erreur de chargement
    * ============================================================
    */
 
@@ -302,10 +316,6 @@ export default function RoomPage() {
     )
   }
 
-  /*
-   * Sécurité supplémentaire
-   */
-
   if (!room) {
     return (
       <Container
@@ -321,7 +331,7 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * Vérifier si l'utilisateur est administrateur
+   * Vérifier si l'utilisateur est admin
    * ============================================================
    */
 
@@ -341,7 +351,7 @@ export default function RoomPage() {
       <Stack spacing={3}>
 
         {/* =====================================================
-            En-tête de la salle
+            En-tête
             ===================================================== */}
 
         <Box>
@@ -409,7 +419,7 @@ export default function RoomPage() {
         </Paper>
 
         {/* =====================================================
-            Liste des joueurs
+            Joueurs
             ===================================================== */}
 
         <Paper
@@ -464,7 +474,7 @@ export default function RoomPage() {
         </Paper>
 
         {/* =====================================================
-            Liste des journées
+            Journées
             ===================================================== */}
 
         <Paper
@@ -478,7 +488,7 @@ export default function RoomPage() {
           <Stack spacing={2}>
 
             {/* -------------------------------------------------
-                Titre + bouton Ajouter
+                Titre + bouton
                 ------------------------------------------------- */}
 
             <Stack
@@ -516,60 +526,77 @@ export default function RoomPage() {
               </Typography>
             ) : (
 
-              /* -------------------------------------------------
-                 Journées existantes
-                 ------------------------------------------------- */
-
               <Stack spacing={2}>
 
                 {days.map((day) => (
+
                   <Paper
                     key={day.id}
                     elevation={0}
+                    onClick={() =>
+                      handleOpenDay(day.id)
+                    }
                     sx={{
                       p: 2,
                       border: '1px solid',
                       borderColor: 'divider',
+                      cursor: 'pointer',
+                      transition:
+                        'border-color 0.2s, background-color 0.2s',
+
+                      '&:hover': {
+                        borderColor:
+                          'primary.main',
+                        backgroundColor:
+                          'action.hover',
+                      },
                     }}
                   >
+
                     <Stack spacing={1.5}>
 
-                      {/* Numéro du jour */}
+                      {/* -------------------------------------------------
+                          Informations journée
+                          ------------------------------------------------- */}
+
+                      <Box>
+
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          fontWeight={600}
+                        >
+                          JOUR {day.day_number}
+                        </Typography>
+
+                        <Typography
+                          variant="h6"
+                          fontWeight={700}
+                        >
+                          {day.title}
+                        </Typography>
+
+                        <Typography>
+                          Thème : {day.theme}
+                        </Typography>
+
+                      </Box>
+
+                      {/* -------------------------------------------------
+                          Statut
+                          ------------------------------------------------- */}
 
                       <Typography
                         variant="body2"
                         color="text.secondary"
-                        fontWeight={600}
                       >
-                        JOUR {day.day_number}
-                      </Typography>
-
-                      {/* Nom */}
-
-                      <Typography
-                        variant="h6"
-                        fontWeight={700}
-                      >
-                        {day.title}
-                      </Typography>
-
-                      {/* Thème */}
-
-                      <Typography>
-                        Thème : {day.theme}
-                      </Typography>
-
-                      {/* Statut */}
-
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        Statut : {day.status}
+                        Statut : {getStatusLabel(
+                          day.status,
+                        )}
                       </Typography>
 
                       {/* -------------------------------------------------
-                          Boutons de contrôle ADMIN
+                          Boutons admin
                           ------------------------------------------------- */}
 
                       {isAdmin && (
@@ -578,6 +605,9 @@ export default function RoomPage() {
                           spacing={1}
                           flexWrap="wrap"
                           useFlexGap
+                          onClick={(event) =>
+                            event.stopPropagation()
+                          }
                         >
 
                           {/* upcoming → active */}
@@ -656,10 +686,13 @@ export default function RoomPage() {
                       )}
 
                     </Stack>
+
                   </Paper>
+
                 ))}
 
               </Stack>
+
             )}
 
           </Stack>
@@ -668,4 +701,34 @@ export default function RoomPage() {
       </Stack>
     </Container>
   )
+}
+
+/*
+ * ================================================================
+ * Traduction des statuts
+ * ================================================================
+ */
+
+function getStatusLabel(
+  status: Day['status'],
+): string {
+  switch (status) {
+    case 'upcoming':
+      return 'À venir'
+
+    case 'active':
+      return 'En cours'
+
+    case 'submission':
+      return 'Soumissions'
+
+    case 'voting':
+      return 'Votes'
+
+    case 'finished':
+      return 'Terminée'
+
+    default:
+      return status
+  }
 }

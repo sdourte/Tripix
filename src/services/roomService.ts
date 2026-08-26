@@ -39,6 +39,15 @@ export interface Day {
   created_at: string
 }
 
+export interface Photo {
+  id: string
+  day_id: string
+  player_id: string
+  storage_path: string
+  photo_number: number
+  created_at: string
+}
+
 /**
  * Crée une nouvelle salle.
  *
@@ -259,7 +268,10 @@ export async function getRoomDays(
     })
 
   if (error) {
-    console.error('Erreur getRoomDays:', error)
+    console.error(
+      'Erreur getRoomDays:',
+      error,
+    )
 
     throw new Error(error.message)
   }
@@ -294,6 +306,9 @@ export async function createDay(
   return data
 }
 
+/**
+ * Met à jour le statut d'une journée.
+ */
 export async function updateDayStatus(
   dayId: string,
   status: DayStatus,
@@ -311,4 +326,153 @@ export async function updateDayStatus(
   }
 
   return data
+}
+
+/**
+ * Récupère le joueur correspondant
+ * à l'utilisateur actuellement connecté
+ * dans une salle donnée.
+ */
+export async function getCurrentPlayer(
+  roomId: string,
+): Promise<Player> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) {
+    throw new Error(userError.message)
+  }
+
+  if (!user) {
+    throw new Error(
+      'Utilisateur non connecté.',
+    )
+  }
+
+  const { data, error } = await supabase
+    .from('players')
+    .select('*')
+    .eq('room_id', roomId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/**
+ * Ajoute une photo ou remplace une photo existante.
+ *
+ * La fonction PostgreSQL add_photo() gère le
+ * ON CONFLICT sur :
+ *
+ * day_id + player_id + photo_number
+ *
+ * Le remplacement n'est autorisé côté SQL
+ * que lorsque la journée est en SUBMISSION.
+ */
+export async function addPhoto(
+  dayId: string,
+  playerId: string,
+  storagePath: string,
+  photoNumber: number,
+): Promise<Photo> {
+  const { data, error } =
+    await supabase.rpc(
+      'add_photo',
+      {
+        p_day_id: dayId,
+        p_player_id: playerId,
+        p_storage_path: storagePath,
+        p_photo_number: photoNumber,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as Photo
+}
+
+/**
+ * Récupère les photos d'un joueur pour une journée.
+ */
+export async function getPlayerPhotos(
+  dayId: string,
+  playerId: string,
+): Promise<Photo[]> {
+  const { data, error } = await supabase
+    .from('photos')
+    .select('*')
+    .eq('day_id', dayId)
+    .eq('player_id', playerId)
+    .order('photo_number', {
+      ascending: true,
+    })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Génère une URL temporaire permettant
+ * d'afficher une photo privée du Storage.
+ */
+export async function getPhotoUrl(
+  storagePath: string,
+): Promise<string> {
+  const {
+    data,
+    error,
+  } = await supabase.storage
+    .from('tripix-photos')
+    .createSignedUrl(
+      storagePath,
+      60 * 60,
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data.signedUrl
+}
+
+/**
+ * Remplace directement un fichier dans le Storage.
+ *
+ * Cette fonction est utilisée uniquement pour
+ * remplacer une photo existante.
+ *
+ * Le contrôle définitif des droits reste effectué
+ * côté PostgreSQL par add_photo().
+ */
+export async function replaceStoragePhoto(
+  storagePath: string,
+  file: File,
+): Promise<void> {
+  const { error } =
+    await supabase.storage
+      .from('tripix-photos')
+      .upload(
+        storagePath,
+        file,
+        {
+          upsert: true,
+          contentType: file.type,
+        },
+      )
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }

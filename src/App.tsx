@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import CreateRoomPage from './pages/CreateRoomPage'
 import JoinRoomPage from './pages/JoinRoomPage'
 import RoomPage from './pages/RoomPage'
+import DayPage from './pages/DayPage'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -67,6 +68,12 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/room/:code/day/:dayId"
+          element={<DayPage />}
+        />
+
       </Routes>
     </BrowserRouter>
   )
