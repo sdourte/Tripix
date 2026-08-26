@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material'
 
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
 
@@ -26,6 +26,7 @@ import {
   getPlayerPhotos,
   getRoomByCode,
   getRoomDays,
+  getRoomPlayers,
   type Day,
   type Player,
   type Photo,
@@ -55,6 +56,8 @@ export default function DayPage() {
       code: string
       dayId: string
     }>()
+
+  const navigate = useNavigate()
 
   /* ==========================================================
      STATE
@@ -129,6 +132,40 @@ export default function DayPage() {
     success,
     setSuccess,
   ] = useState('')
+
+  /*
+   * ==========================================================
+   * État de progression des joueurs
+   * ==========================================================
+   */
+
+  const [
+    totalPlayers,
+    setTotalPlayers,
+  ] = useState(0)
+
+  const [
+    playersWhoSubmitted,
+    setPlayersWhoSubmitted,
+  ] = useState(0)
+
+  const [
+    checkingAllPhotos,
+    setCheckingAllPhotos,
+  ] = useState(false)
+
+  /* ==========================================================
+     DERIVED STATE
+     ========================================================== */
+
+  const isAdmin =
+    !!room &&
+    !!player &&
+    player.user_id === room.admin_id
+
+  const allPlayersSubmitted =
+    totalPlayers > 0 &&
+    playersWhoSubmitted === totalPlayers
 
   /* ==========================================================
      LOAD ROOM / DAY / PLAYER
@@ -257,6 +294,106 @@ export default function DayPage() {
   ])
 
   /* ==========================================================
+     CHECK ALL PLAYERS PHOTOS
+     ========================================================== */
+
+  async function checkAllPlayersSubmitted() {
+    if (!room || !day) {
+      return
+    }
+
+    try {
+      setCheckingAllPhotos(true)
+
+      /*
+       * Récupérer tous les joueurs de la salle.
+       */
+      const players =
+        await getRoomPlayers(
+          room.id,
+        )
+
+      /*
+       * Récupérer les photos de cette journée.
+       *
+       * On récupère uniquement player_id et photo_number
+       * car nous n'avons pas besoin des images ici.
+       */
+      const {
+        data: photos,
+        error: photosError,
+      } = await supabase
+        .from('photos')
+        .select(
+          'player_id, photo_number',
+        )
+        .eq(
+          'day_id',
+          day.id,
+        )
+
+      if (photosError) {
+        throw new Error(
+          photosError.message,
+        )
+      }
+
+      /*
+       * Chaque joueur doit avoir exactement
+       * 3 photos.
+       */
+      const submittedPlayerIds =
+        new Set<string>()
+
+      for (const currentPlayer of players) {
+        const playerPhotos =
+          (photos ?? []).filter(
+            (photo) =>
+              photo.player_id ===
+              currentPlayer.id,
+          )
+
+        if (
+          playerPhotos.length >= 3
+        ) {
+          submittedPlayerIds.add(
+            currentPlayer.id,
+          )
+        }
+      }
+
+      setTotalPlayers(
+        players.length,
+      )
+
+      setPlayersWhoSubmitted(
+        submittedPlayerIds.size,
+      )
+    } catch (err) {
+      console.error(
+        'Erreur lors de la vérification des photos :',
+        err,
+      )
+    } finally {
+      setCheckingAllPhotos(false)
+    }
+  }
+
+  /*
+   * Vérification initiale.
+   */
+  useEffect(() => {
+    if (!room || !day) {
+      return
+    }
+
+    checkAllPlayersSubmitted()
+  }, [
+    room?.id,
+    day?.id,
+  ])
+
+  /* ==========================================================
      REALTIME — DAY
      ========================================================== */
 
@@ -279,9 +416,17 @@ export default function DayPage() {
             filter: `id=eq.${day.id}`,
           },
           (payload) => {
-            setDay(
-              payload.new as Day,
-            )
+            const updatedDay =
+              payload.new as Day
+
+            setDay(updatedDay)
+
+            /*
+             * Dès que le statut change,
+             * on vérifie également la progression
+             * des joueurs.
+             */
+            checkAllPlayersSubmitted()
 
             /*
              * Dès que le statut change,
@@ -289,9 +434,7 @@ export default function DayPage() {
              * modification en cours.
              */
             if (
-              (
-                payload.new as Day
-              ).status !==
+              updatedDay.status !==
               'submission'
             ) {
               setReplacingPhotoNumber(
@@ -320,6 +463,63 @@ export default function DayPage() {
       )
     }
   }, [day?.id])
+
+  /* ==========================================================
+     REALTIME — PHOTOS
+     ========================================================== */
+
+  useEffect(() => {
+    if (!day || !room) {
+      return
+    }
+
+    const channel =
+      supabase
+        .channel(
+          `photos-day-${day.id}`,
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'photos',
+            filter: `day_id=eq.${day.id}`,
+          },
+          () => {
+            /*
+             * Une photo a été ajoutée,
+             * modifiée ou supprimée.
+             *
+             * On recalcule donc immédiatement
+             * la progression globale.
+             */
+            checkAllPlayersSubmitted()
+
+            /*
+             * Si c'est notre propre photo,
+             * on recharge également notre galerie.
+             */
+            if (player) {
+              loadUploadedPhotos(
+                day,
+                player,
+              )
+            }
+          },
+        )
+        .subscribe()
+
+    return () => {
+      supabase.removeChannel(
+        channel,
+      )
+    }
+  }, [
+    day?.id,
+    room?.id,
+    player?.id,
+  ])
 
   /* ==========================================================
      SELECT INITIAL 3 PHOTOS
@@ -492,10 +692,6 @@ export default function DayPage() {
           `${photoNumber}.${extension}`,
         ].join('/')
 
-        /*
-         * Premier upload :
-         * upsert FALSE.
-         */
         const {
           error:
             uploadError,
@@ -521,9 +717,6 @@ export default function DayPage() {
           )
         }
 
-        /*
-         * Enregistrer en DB.
-         */
         try {
           await addPhoto(
             day.id,
@@ -542,17 +735,13 @@ export default function DayPage() {
         }
       }
 
-      /*
-       * Recharger les photos.
-       */
       await loadUploadedPhotos(
         day,
         player,
       )
 
-      /*
-       * Nettoyer les previews.
-       */
+      await checkAllPlayersSubmitted()
+
       selectedPhotos.forEach(
         (photo) => {
           URL.revokeObjectURL(
@@ -755,14 +944,6 @@ export default function DayPage() {
           ?.toLowerCase() ||
         'jpg'
 
-      /*
-       * Le chemin reste toujours le même
-       * pour un numéro de photo donné.
-       *
-       * Exemple :
-       *
-       * room/day/player/2.jpg
-       */
       const storagePath = [
         room.id,
         day.id,
@@ -770,12 +951,6 @@ export default function DayPage() {
         `${photoNumber}.${extension}`,
       ].join('/')
 
-      /*
-       * IMPORTANT :
-       * ici on utilise upsert TRUE
-       * car on remplace une photo
-       * qui existe déjà.
-       */
       const {
         error:
           uploadError,
@@ -801,13 +976,6 @@ export default function DayPage() {
         )
       }
 
-      /*
-       * Mettre à jour la DB.
-       *
-       * addPhoto utilise ON CONFLICT,
-       * donc la ligne existante est
-       * remplacée.
-       */
       await addPhoto(
         day.id,
         player.id,
@@ -815,17 +983,13 @@ export default function DayPage() {
         photoNumber,
       )
 
-      /*
-       * Recharger les photos.
-       */
       await loadUploadedPhotos(
         day,
         player,
       )
 
-      /*
-       * Nettoyage.
-       */
+      await checkAllPlayersSubmitted()
+
       URL.revokeObjectURL(
         replacementPhoto.preview,
       )
@@ -855,6 +1019,34 @@ export default function DayPage() {
     } finally {
       setReplacing(false)
     }
+  }
+
+  /* ==========================================================
+     START SLIDESHOW
+     ========================================================== */
+
+  function handleStartSlideshow() {
+    if (!code || !dayId) {
+      return
+    }
+
+    if (!isAdmin) {
+      return
+    }
+
+    if (!allPlayersSubmitted) {
+      setError(
+        'Tous les joueurs doivent avoir envoyé leurs 3 photos avant de lancer le diaporama.',
+      )
+      return
+    }
+
+    /*
+     * Route vers SlideshowPage.
+     */
+    navigate(
+      `/room/${code}/day/${dayId}/slideshow`,
+    )
   }
 
   /* ==========================================================
@@ -1024,6 +1216,117 @@ export default function DayPage() {
             {day.theme}
           </Typography>
         </Paper>
+
+        {/* ====================================================
+            SLIDESHOW ADMIN
+            ==================================================== */}
+
+        {day.status ===
+          'submission' &&
+          isAdmin && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                border:
+                  '1px solid',
+                borderColor:
+                  'divider',
+              }}
+            >
+              <Stack spacing={2}>
+
+                <Box>
+                  <Typography
+                    variant="h6"
+                    fontWeight={700}
+                  >
+                    Diaporama
+                  </Typography>
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mt: 0.5,
+                    }}
+                  >
+                    Lorsque tous les joueurs
+                    ont envoyé leurs 3 photos,
+                    tu peux lancer le diaporama
+                    pour les présenter à tout
+                    le monde avant les votes.
+                  </Typography>
+                </Box>
+
+                <Box>
+                  {checkingAllPhotos ? (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                    >
+                      <CircularProgress
+                        size={20}
+                      />
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                      >
+                        Vérification des photos...
+                      </Typography>
+                    </Stack>
+                  ) : (
+                    <Stack spacing={1.5}>
+
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                      >
+                        {playersWhoSubmitted}
+                        {' / '}
+                        {totalPlayers}
+                        {' joueurs ont envoyé leurs 3 photos'}
+                      </Typography>
+
+                      {!allPlayersSubmitted && (
+                        <Alert severity="info">
+                          Le diaporama sera disponible
+                          lorsque tous les joueurs
+                          auront envoyé leurs 3 photos.
+                        </Alert>
+                      )}
+
+                      {allPlayersSubmitted && (
+                        <Alert severity="success">
+                          Tout le monde a envoyé
+                          ses 3 photos. Le diaporama
+                          peut être lancé.
+                        </Alert>
+                      )}
+
+                      <Button
+                        variant="contained"
+                        size="large"
+                        disabled={
+                          !allPlayersSubmitted ||
+                          checkingAllPhotos
+                        }
+                        onClick={
+                          handleStartSlideshow
+                        }
+                      >
+                        Lancer le diaporama
+                      </Button>
+
+                    </Stack>
+                  )}
+                </Box>
+
+              </Stack>
+            </Paper>
+          )}
 
         {/* ====================================================
             UPCOMING

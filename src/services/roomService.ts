@@ -26,6 +26,7 @@ export type DayStatus =
   | 'upcoming'
   | 'active'
   | 'submission'
+  | 'slideshow'
   | 'voting'
   | 'finished'
 
@@ -50,9 +51,6 @@ export interface Photo {
 
 /**
  * Crée une nouvelle salle.
- *
- * L'utilisateur connecté devient automatiquement
- * administrateur de la salle.
  */
 export async function createRoom(
   roomName: string,
@@ -92,9 +90,6 @@ export async function createRoom(
 
 /**
  * Rejoint une salle existante.
- *
- * Si l'utilisateur est déjà membre de la salle,
- * la fonction SQL retourne son joueur existant.
  */
 export async function joinRoom(
   roomCode: string,
@@ -177,8 +172,7 @@ export async function getRoomPlayers(
 }
 
 /**
- * Récupère toutes les salles auxquelles
- * l'utilisateur actuellement connecté participe.
+ * Récupère toutes les salles de l'utilisateur.
  */
 export async function getUserRooms(): Promise<
   UserRoom[]
@@ -281,9 +275,6 @@ export async function getRoomDays(
 
 /**
  * Crée une nouvelle journée.
- *
- * La vérification de l'admin est effectuée
- * côté PostgreSQL dans create_day().
  */
 export async function createDay(
   roomId: string,
@@ -329,9 +320,79 @@ export async function updateDayStatus(
 }
 
 /**
+ * Lance le diaporama.
+ *
+ * Seul l'administrateur de la salle peut le faire,
+ * et uniquement lorsque tous les joueurs ont
+ * envoyé leurs 3 photos.
+ */
+export async function startDaySlideshow(
+  dayId: string,
+): Promise<Day> {
+  const { data, error } =
+    await supabase.rpc(
+      'start_day_slideshow',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/**
+ * Lance la phase de vote.
+ *
+ * Seul l'administrateur peut passer du
+ * diaporama aux votes.
+ */
+export async function startDayVoting(
+  dayId: string,
+): Promise<Day> {
+  const { data, error } =
+    await supabase.rpc(
+      'start_day_voting',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+/**
+ * Vérifie si tous les joueurs ont envoyé
+ * leurs 3 photos.
+ */
+export async function areAllDayPhotosSubmitted(
+  dayId: string,
+): Promise<boolean> {
+  const { data, error } =
+    await supabase.rpc(
+      'are_all_day_photos_submitted',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return Boolean(data)
+}
+
+/**
  * Récupère le joueur correspondant
- * à l'utilisateur actuellement connecté
- * dans une salle donnée.
+ * à l'utilisateur connecté.
  */
 export async function getCurrentPlayer(
   roomId: string,
@@ -366,15 +427,8 @@ export async function getCurrentPlayer(
 }
 
 /**
- * Ajoute une photo ou remplace une photo existante.
- *
- * La fonction PostgreSQL add_photo() gère le
- * ON CONFLICT sur :
- *
- * day_id + player_id + photo_number
- *
- * Le remplacement n'est autorisé côté SQL
- * que lorsque la journée est en SUBMISSION.
+ * Ajoute une photo ou remplace une photo
+ * existante.
  */
 export async function addPhoto(
   dayId: string,
@@ -401,7 +455,7 @@ export async function addPhoto(
 }
 
 /**
- * Récupère les photos d'un joueur pour une journée.
+ * Récupère les photos d'un joueur.
  */
 export async function getPlayerPhotos(
   dayId: string,
@@ -424,8 +478,29 @@ export async function getPlayerPhotos(
 }
 
 /**
- * Génère une URL temporaire permettant
- * d'afficher une photo privée du Storage.
+ * Récupère toutes les photos d'une journée
+ * dans un ordre aléatoire.
+ */
+export async function getDaySlideshowPhotos(
+  dayId: string,
+): Promise<Photo[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_day_slideshow_photos',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data ?? []) as Photo[]
+}
+
+/**
+ * Génère une URL temporaire pour une photo.
  */
 export async function getPhotoUrl(
   storagePath: string,
@@ -448,13 +523,7 @@ export async function getPhotoUrl(
 }
 
 /**
- * Remplace directement un fichier dans le Storage.
- *
- * Cette fonction est utilisée uniquement pour
- * remplacer une photo existante.
- *
- * Le contrôle définitif des droits reste effectué
- * côté PostgreSQL par add_photo().
+ * Remplace un fichier existant dans Storage.
  */
 export async function replaceStoragePhoto(
   storagePath: string,
