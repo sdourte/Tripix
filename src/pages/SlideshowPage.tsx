@@ -730,7 +730,9 @@ export default function SlideshowPage() {
               sm: 'row',
             }}
             spacing={2}
-            width="100%"
+            sx={{
+              width: '100%',
+            }}
           >
             <Button
               variant="outlined"

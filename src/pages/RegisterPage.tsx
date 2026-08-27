@@ -1,4 +1,5 @@
-import { FormEvent, useState } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   Alert,
   Button,
@@ -82,7 +83,9 @@ export default function RegisterPage() {
         component="form"
         onSubmit={handleSubmit}
         spacing={3}
-        width="100%"
+        sx={{
+          width: '100%',
+        }}
       >
         <Stack spacing={1}>
           <Typography

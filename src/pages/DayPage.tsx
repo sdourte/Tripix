@@ -28,7 +28,6 @@ import {
   getRoomByCode,
   getRoomDays,
   getRoomPlayers,
-  getVotingProgress,
   type Day,
   type Player,
   type Photo,
@@ -2007,9 +2006,9 @@ export default function DayPage() {
                       color="success"
                       size="large"
                       disabled={
-                        !allPlayersVoted ||
-                        loadingVotingProgress ||
-                        finishingDay
+                        !finishingDay
+                          ? false
+                          : true
                       }
                       onClick={handleFinishDay}
                     >

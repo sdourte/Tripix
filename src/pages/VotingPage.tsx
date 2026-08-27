@@ -228,6 +228,10 @@ export default function VotingPage() {
     let cancelled = false
 
     async function refreshProgress() {
+      if (!dayId) {
+        return
+      }
+
       try {
         const progress =
           await getVotingProgress(dayId)
@@ -313,6 +317,11 @@ export default function VotingPage() {
        * après le vote.
        */
       const progress =
+        await getVotingProgress(dayId)
+        if (!dayId) {
+          return
+        }
+
         await getVotingProgress(dayId)
 
       setVotingProgress(progress)
@@ -637,8 +646,8 @@ export default function VotingPage() {
                   spacing={2}
                   sx={{
                     alignItems: 'center',
+                    textAlign: 'center',
                   }}
-                  textAlign="center"
                 >
                   <Typography
                     variant="h5"
@@ -675,7 +684,9 @@ export default function VotingPage() {
               <CardContent>
                 <Typography
                   color="text.secondary"
-                  textAlign="center"
+                  sx={{
+                    textAlign: "center",
+                  }}
                 >
                   Aucune photo n'est disponible
                   pour le moment.

@@ -374,8 +374,8 @@ export default function RoomPage() {
 
   function handleOpenEditDay(day: Day) {
     setEditingDay(day)
-    setEditTitle(day.title)
-    setEditTheme(day.theme)
+    setEditTitle(day.title ?? '')
+    setEditTheme(day.theme ?? '')
     setError('')
   }
 
