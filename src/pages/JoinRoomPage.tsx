@@ -32,12 +32,13 @@ export default function JoinRoomPage() {
     try {
       setLoading(true)
 
-      const room = await joinRoom(
+      await joinRoom(
         roomCode.trim(),
         playerName.trim(),
       )
 
-      navigate(`/room/${room.code}`)
+      navigate(`/room/${roomCode.trim().toUpperCase()}`)
+
     } catch (err) {
       setError(
         err instanceof Error

@@ -535,27 +535,37 @@ export async function getRoomSlideshowPhotos(
 }
 
 /**
- * Récupère les photos du diaporama d'une journée.
+ * Récupère uniquement les photos du diaporama
+ * de la journée demandée.
  */
 export async function getDaySlideshowPhotos(
   dayId: string,
 ): Promise<Photo[]> {
-  const { data: day, error: dayError } =
-    await supabase
-      .from('days')
-      .select('room_id')
-      .eq('id', dayId)
-      .single()
+  const { data, error } = await supabase
+    .from('photos')
+    .select(`
+      id,
+      day_id,
+      player_id,
+      storage_path,
+      photo_number,
+      slideshow_order,
+      created_at
+    `)
+    .eq('day_id', dayId)
+    .order('slideshow_order', {
+      ascending: true,
+      nullsFirst: false,
+    })
+    .order('photo_number', {
+      ascending: true,
+    })
 
-  if (dayError || !day) {
-    throw new Error(
-      'Impossible de retrouver la salle de cette journée.',
-    )
+  if (error) {
+    throw new Error(error.message)
   }
 
-  return getRoomSlideshowPhotos(
-    day.room_id,
-  )
+  return data ?? []
 }
 
 /**
