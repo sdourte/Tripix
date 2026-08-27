@@ -28,6 +28,7 @@ import {
   getRoomByCode,
   getRoomDays,
   getRoomPlayers,
+  getVotingProgress,
   type Day,
   type Player,
   type Photo,
@@ -1196,7 +1197,9 @@ export default function DayPage() {
 
           <Typography
             variant="h4"
-            fontWeight={700}
+            sx={{
+              fontWeight: 700,
+            }}
           >
             Jour{' '}
             {day.day_number}
@@ -1261,9 +1264,9 @@ export default function DayPage() {
 
           <Typography
             variant="h5"
-            fontWeight={700}
             sx={{
               mt: 1,
+              fontWeight: 700,
             }}
           >
             {day.theme}
@@ -1292,7 +1295,9 @@ export default function DayPage() {
                 <Box>
                   <Typography
                     variant="h6"
-                    fontWeight={700}
+                    sx={{
+                      fontWeight: 700,
+                    }}
                   >
                     Diaporama
                   </Typography>
@@ -1317,7 +1322,9 @@ export default function DayPage() {
                     <Stack
                       direction="row"
                       spacing={1}
-                      alignItems="center"
+                      sx={{
+                        alignItems: 'center',
+                      }}
                     >
                       <CircularProgress
                         size={20}
@@ -1335,7 +1342,9 @@ export default function DayPage() {
 
                       <Typography
                         variant="body2"
-                        fontWeight={600}
+                        sx={{
+                          fontWeight: 600,
+                        }}
                       >
                         {playersWhoSubmitted}
                         {' / '}
@@ -1401,7 +1410,9 @@ export default function DayPage() {
           >
             <Typography
               variant="h6"
-              fontWeight={700}
+              sx={{
+                fontWeight: 700,
+              }}
             >
               Journée à venir
             </Typography>
@@ -1439,7 +1450,9 @@ export default function DayPage() {
           >
             <Typography
               variant="h6"
-              fontWeight={700}
+              sx={{
+                fontWeight: 700,
+              }}
             >
               Journée en cours
             </Typography>
@@ -1477,7 +1490,9 @@ export default function DayPage() {
               <Box>
                 <Typography
                   variant="h6"
-                  fontWeight={700}
+                  sx={{
+                    fontWeight: 700,
+                  }}
                 >
                   Vos photos
                 </Typography>
@@ -1529,7 +1544,9 @@ export default function DayPage() {
                     >
                       <Typography
                         variant="body2"
-                        fontWeight={600}
+                        sx={{
+                          fontWeight: 600,
+                        }}
                       >
                         Photos
                         envoyées (
@@ -1855,17 +1872,17 @@ export default function DayPage() {
 
                                 <Stack
                                   direction="row"
-                                  justifyContent="space-between"
-                                  alignItems="center"
                                   sx={{
                                     p: 1.5,
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
                                   }}
                                 >
                                   <Typography
                                     variant="body2"
-                                    fontWeight={
-                                      600
-                                    }
+                                    sx={{
+                                      fontWeight: 600,
+                                    }}
                                   >
                                     Photo{' '}
                                     {index +
@@ -1936,7 +1953,9 @@ export default function DayPage() {
               <Box>
                 <Typography
                   variant="h6"
-                  fontWeight={700}
+                  sx={{
+                    fontWeight: 700,
+                  }}
                 >
                   Les votes sont ouverts
                 </Typography>
@@ -1985,14 +2004,14 @@ export default function DayPage() {
 
                     <Button
                       variant="outlined"
-                      color="warning"
+                      color="success"
                       size="large"
                       disabled={
+                        !allPlayersVoted ||
+                        loadingVotingProgress ||
                         finishingDay
                       }
-                      onClick={
-                        handleFinishDay
-                      }
+                      onClick={handleFinishDay}
                     >
                       {finishingDay
                         ? 'Clôture en cours...'
@@ -2028,7 +2047,9 @@ export default function DayPage() {
 
               <Typography
                 variant="h6"
-                fontWeight={700}
+                sx={{
+                  fontWeight: 700,
+                }}
                 color="success.main"
               >
                 Journée terminée

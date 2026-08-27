@@ -106,10 +106,6 @@ export default function RoomPage() {
       try {
         setError('')
 
-        /*
-         * Utilisateur connecté
-         */
-
         const user = await getCurrentUser()
 
         if (!user) {
@@ -122,16 +118,8 @@ export default function RoomPage() {
 
         setUserId(user.id)
 
-        /*
-         * Récupérer la salle
-         */
-
         const roomData =
           await getRoomByCode(code)
-
-        /*
-         * Récupérer les joueurs et les journées
-         */
 
         const [
           playersData,
@@ -162,10 +150,6 @@ export default function RoomPage() {
    * ============================================================
    * Realtime — Joueurs
    * ============================================================
-   *
-   * Lorsqu'un participant rejoint ou quitte la salle,
-   * tous les utilisateurs présents voient la liste
-   * mise à jour automatiquement.
    */
 
   useEffect(() => {
@@ -210,9 +194,6 @@ export default function RoomPage() {
    * ============================================================
    * Realtime — Journées
    * ============================================================
-   *
-   * Toute création, modification ou suppression d'une journée
-   * est automatiquement répercutée chez tous les utilisateurs.
    */
 
   useEffect(() => {
@@ -306,13 +287,6 @@ export default function RoomPage() {
         theme.trim(),
       )
 
-      /*
-       * Mise à jour locale immédiate.
-       *
-       * Le Realtime recevra également l'INSERT.
-       * On vérifie donc que la journée n'existe pas déjà.
-       */
-
       setDays((currentDays) => {
         const alreadyExists =
           currentDays.some(
@@ -359,10 +333,6 @@ export default function RoomPage() {
           dayId,
           status,
         )
-
-      /*
-       * Mise à jour locale immédiate.
-       */
 
       setDays((currentDays) =>
         currentDays.map((day) =>
@@ -427,7 +397,7 @@ export default function RoomPage() {
 
   /*
    * ============================================================
-   * Enregistrer les modifications d'une journée
+   * Enregistrer les modifications
    * ============================================================
    */
 
@@ -456,17 +426,6 @@ export default function RoomPage() {
     try {
       setSavingEdit(true)
       setError('')
-
-      /*
-       * UPDATE direct sur la table days.
-       *
-       * La policy RLS :
-       *
-       * "Admins can update days in their rooms"
-       *
-       * vérifie côté PostgreSQL que l'utilisateur est
-       * bien administrateur de la salle.
-       */
 
       const { data, error: updateError } =
         await supabase
@@ -499,10 +458,6 @@ export default function RoomPage() {
         )
       }
 
-      /*
-       * Mise à jour locale immédiate.
-       */
-
       setDays((currentDays) =>
         currentDays.map((day) =>
           day.id === data.id
@@ -510,10 +465,6 @@ export default function RoomPage() {
             : day,
         ),
       )
-
-      /*
-       * Fermer la fenêtre.
-       */
 
       setEditingDay(null)
       setEditTitle('')
@@ -576,10 +527,6 @@ export default function RoomPage() {
           selectedStatus,
         )
 
-      /*
-       * Mise à jour locale immédiate.
-       */
-
       setDays((currentDays) =>
         currentDays.map((day) =>
           day.id === updatedDay.id
@@ -587,10 +534,6 @@ export default function RoomPage() {
             : day,
         ),
       )
-
-      /*
-       * Fermer la fenêtre.
-       */
 
       setStatusEditingDay(null)
     } catch (err) {
@@ -644,17 +587,6 @@ export default function RoomPage() {
       setDeleting(true)
       setError('')
 
-      /*
-       * DELETE direct sur la table days.
-       *
-       * La policy RLS :
-       *
-       * "Admins can delete days in their rooms"
-       *
-       * empêche un utilisateur classique de supprimer
-       * une journée.
-       */
-
       const { error: deleteError } =
         await supabase
           .from('days')
@@ -666,10 +598,6 @@ export default function RoomPage() {
           deleteError.message,
         )
       }
-
-      /*
-       * Mise à jour locale immédiate.
-       */
 
       setDays((currentDays) =>
         currentDays.filter(
@@ -721,7 +649,9 @@ export default function RoomPage() {
     return (
       <Container
         maxWidth="sm"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Alert severity="error">
           {error}
@@ -734,7 +664,9 @@ export default function RoomPage() {
     return (
       <Container
         maxWidth="sm"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Alert severity="error">
           Salle introuvable.
@@ -782,8 +714,8 @@ export default function RoomPage() {
           <Box>
             <Typography
               variant="h4"
-              fontWeight={700}
               sx={{
+                fontWeight: 700,
                 fontSize: {
                   xs: '1.8rem',
                   sm: '2.125rem',
@@ -793,7 +725,9 @@ export default function RoomPage() {
               {room.name}
             </Typography>
 
-            <Typography color="text.secondary">
+            <Typography
+              color="text.secondary"
+            >
               Salle Tripix
             </Typography>
           </Box>
@@ -805,7 +739,9 @@ export default function RoomPage() {
           {error && (
             <Alert
               severity="error"
-              onClose={() => setError('')}
+              onClose={() =>
+                setError('')
+              }
             >
               {error}
             </Alert>
@@ -836,9 +772,9 @@ export default function RoomPage() {
 
             <Typography
               variant="h3"
-              fontWeight={800}
-              letterSpacing={4}
               sx={{
+                fontWeight: 800,
+                letterSpacing: 4,
                 mt: 1,
                 fontSize: {
                   xs: '2.5rem',
@@ -852,7 +788,9 @@ export default function RoomPage() {
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ mt: 1 }}
+              sx={{
+                mt: 1,
+              }}
             >
               Donne ce code aux autres joueurs.
             </Typography>
@@ -876,7 +814,9 @@ export default function RoomPage() {
             <Stack spacing={2}>
               <Typography
                 variant="h6"
-                fontWeight={700}
+                sx={{
+                  fontWeight: 700,
+                }}
               >
                 Joueurs ({players.length})
               </Typography>
@@ -909,8 +849,8 @@ export default function RoomPage() {
                       <Typography
                         variant="body2"
                         color="primary"
-                        fontWeight={600}
                         sx={{
+                          fontWeight: 600,
                           flexShrink: 0,
                         }}
                       >
@@ -974,7 +914,9 @@ export default function RoomPage() {
               >
                 <Typography
                   variant="h6"
-                  fontWeight={700}
+                  sx={{
+                    fontWeight: 700,
+                  }}
                 >
                   Journées
                 </Typography>
@@ -1005,8 +947,11 @@ export default function RoomPage() {
                   ------------------------------------------------- */}
 
               {days.length === 0 ? (
-                <Typography color="text.secondary">
-                  Aucune journée n'a encore été créée.
+                <Typography
+                  color="text.secondary"
+                >
+                  Aucune journée n'a encore
+                  été créée.
                 </Typography>
               ) : (
                 <Stack spacing={2}>
@@ -1049,17 +994,20 @@ export default function RoomPage() {
                           <Typography
                             variant="body2"
                             color="text.secondary"
-                            fontWeight={600}
+                            sx={{
+                              fontWeight: 600,
+                            }}
                           >
                             JOUR {day.day_number}
                           </Typography>
 
                           <Typography
                             variant="h6"
-                            fontWeight={700}
                             sx={{
+                              fontWeight: 700,
                               mt: 0.25,
-                              wordBreak: 'break-word',
+                              wordBreak:
+                                'break-word',
                             }}
                           >
                             {day.title}
@@ -1067,7 +1015,8 @@ export default function RoomPage() {
 
                           <Typography
                             sx={{
-                              wordBreak: 'break-word',
+                              wordBreak:
+                                'break-word',
                             }}
                           >
                             Thème : {day.theme}
@@ -1128,7 +1077,8 @@ export default function RoomPage() {
                                   sm: 44,
                                 },
                                 px: 1,
-                                whiteSpace: 'normal',
+                                whiteSpace:
+                                  'normal',
                                 lineHeight: 1.2,
                               }}
                             >
@@ -1154,7 +1104,8 @@ export default function RoomPage() {
                                   sm: 44,
                                 },
                                 px: 1,
-                                whiteSpace: 'normal',
+                                whiteSpace:
+                                  'normal',
                                 lineHeight: 1.2,
                               }}
                             >
@@ -1203,7 +1154,8 @@ export default function RoomPage() {
                                   sm: 44,
                                 },
                                 px: 1,
-                                whiteSpace: 'normal',
+                                whiteSpace:
+                                  'normal',
                                 lineHeight: 1.2,
                               }}
                             >
@@ -1232,7 +1184,8 @@ export default function RoomPage() {
                                     sm: 44,
                                   },
                                   px: 1,
-                                  whiteSpace: 'normal',
+                                  whiteSpace:
+                                    'normal',
                                   lineHeight: 1.2,
                                 }}
                               >
@@ -1262,7 +1215,8 @@ export default function RoomPage() {
                                     sm: 44,
                                   },
                                   px: 1,
-                                  whiteSpace: 'normal',
+                                  whiteSpace:
+                                    'normal',
                                   lineHeight: 1.2,
                                 }}
                               >
@@ -1314,7 +1268,8 @@ export default function RoomPage() {
                                     sm: 44,
                                   },
                                   px: 1,
-                                  whiteSpace: 'normal',
+                                  whiteSpace:
+                                    'normal',
                                   lineHeight: 1.2,
                                 }}
                               >
@@ -1366,7 +1321,8 @@ export default function RoomPage() {
                                     sm: 44,
                                   },
                                   px: 1,
-                                  whiteSpace: 'normal',
+                                  whiteSpace:
+                                    'normal',
                                   lineHeight: 1.2,
                                 }}
                               >
@@ -1428,7 +1384,9 @@ export default function RoomPage() {
         <DialogContent>
           <Stack
             spacing={2}
-            sx={{ pt: 1 }}
+            sx={{
+              pt: 1,
+            }}
           >
             <Typography
               variant="body2"
@@ -1512,7 +1470,9 @@ export default function RoomPage() {
         <DialogContent>
           <Stack
             spacing={2}
-            sx={{ pt: 1 }}
+            sx={{
+              pt: 1,
+            }}
           >
             <Typography
               variant="body2"
@@ -1523,7 +1483,9 @@ export default function RoomPage() {
             </Typography>
 
             <Typography
-              fontWeight={700}
+              sx={{
+                fontWeight: 700,
+              }}
             >
               {statusEditingDay?.title}
             </Typography>
@@ -1627,7 +1589,9 @@ export default function RoomPage() {
             </Typography>
 
             <Typography
-              fontWeight={700}
+              sx={{
+                fontWeight: 700,
+              }}
             >
               Jour {deletingDay?.day_number} —{' '}
               {deletingDay?.title}
@@ -1697,9 +1661,6 @@ function getStatusLabel(
 
     case 'submission':
       return 'Soumissions'
-
-    case 'slideshow':
-      return 'Diaporama'
 
     case 'voting':
       return 'Votes'
