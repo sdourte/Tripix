@@ -259,6 +259,7 @@ export default function VotingPage() {
 
     return () => {
       cancelled = true
+
       window.clearInterval(
         intervalId,
       )
@@ -405,7 +406,9 @@ export default function VotingPage() {
     return (
       <Container
         maxWidth="md"
-        sx={{ py: 4 }}
+        sx={{
+          py: 4,
+        }}
       >
         <Alert severity="error">
           {error}
@@ -440,7 +443,9 @@ export default function VotingPage() {
           <Box>
             <Typography
               variant="h4"
-              fontWeight={800}
+              sx={{
+                fontWeight: 800,
+              }}
               gutterBottom
             >
               Votez pour les photos
@@ -483,14 +488,21 @@ export default function VotingPage() {
                     xs: 'column',
                     sm: 'row',
                   }}
-                  justifyContent="space-between"
-                  alignItems={{
-                    xs: 'flex-start',
-                    sm: 'center',
-                  }}
                   spacing={1}
+                  sx={{
+                    justifyContent:
+                      'space-between',
+                    alignItems: {
+                      xs: 'flex-start',
+                      sm: 'center',
+                    },
+                  }}
                 >
-                  <Typography fontWeight={700}>
+                  <Typography
+                    sx={{
+                      fontWeight: 700,
+                    }}
+                  >
                     Ta progression
                   </Typography>
 
@@ -500,7 +512,9 @@ export default function VotingPage() {
                         ? 'success.main'
                         : 'text.secondary'
                     }
-                    fontWeight={700}
+                    sx={{
+                      fontWeight: 700,
+                    }}
                   >
                     {votedCount} /{' '}
                     {votablePhotos.length}{' '}
@@ -544,14 +558,21 @@ export default function VotingPage() {
                       xs: 'column',
                       sm: 'row',
                     }}
-                    justifyContent="space-between"
-                    alignItems={{
-                      xs: 'flex-start',
-                      sm: 'center',
-                    }}
                     spacing={1}
+                    sx={{
+                      justifyContent:
+                        'space-between',
+                      alignItems: {
+                        xs: 'flex-start',
+                        sm: 'center',
+                      },
+                    }}
                   >
-                    <Typography fontWeight={700}>
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                      }}
+                    >
                       Progression des participants
                     </Typography>
 
@@ -561,7 +582,9 @@ export default function VotingPage() {
                           ? 'success.main'
                           : 'text.secondary'
                       }
-                      fontWeight={700}
+                      sx={{
+                        fontWeight: 700,
+                      }}
                     >
                       {
                         votingProgress.completed_players
@@ -612,12 +635,16 @@ export default function VotingPage() {
               <CardContent>
                 <Stack
                   spacing={2}
-                  alignItems="center"
+                  sx={{
+                    alignItems: 'center',
+                  }}
                   textAlign="center"
                 >
                   <Typography
                     variant="h5"
-                    fontWeight={800}
+                    sx={{
+                      fontWeight: 800,
+                    }}
                     color="success.main"
                   >
                     Le vote est terminé
@@ -717,7 +744,9 @@ export default function VotingPage() {
 
                       {photo.isOwn && (
                         <Typography
-                          fontWeight={700}
+                          sx={{
+                            fontWeight: 700,
+                          }}
                           gutterBottom
                         >
                           Ta photo

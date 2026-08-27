@@ -36,7 +36,9 @@ export default function RegisterPage() {
     }
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError(
+        'Les mots de passe ne correspondent pas.',
+      )
       return
     }
 
@@ -73,6 +75,7 @@ export default function RegisterPage() {
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <Stack
@@ -82,7 +85,12 @@ export default function RegisterPage() {
         width="100%"
       >
         <Stack spacing={1}>
-          <Typography variant="h4" fontWeight={700}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+            }}
+          >
             Créer un compte
           </Typography>
 
@@ -150,7 +158,9 @@ export default function RegisterPage() {
 
         <Button
           variant="text"
-          onClick={() => navigate('/login')}
+          onClick={() =>
+            navigate('/login')
+          }
           disabled={loading}
         >
           J'ai déjà un compte
@@ -158,7 +168,9 @@ export default function RegisterPage() {
 
         <Button
           variant="text"
-          onClick={() => navigate('/')}
+          onClick={() =>
+            navigate('/')
+          }
           disabled={loading}
         >
           Retour

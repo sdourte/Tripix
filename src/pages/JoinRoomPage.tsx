@@ -32,13 +32,12 @@ export default function JoinRoomPage() {
     try {
       setLoading(true)
 
-      await joinRoom(
+      const room = await joinRoom(
         roomCode.trim(),
         playerName.trim(),
       )
 
-      navigate(`/room/${roomCode.trim().toUpperCase()}`)
-
+      navigate(`/room/${room.code}`)
     } catch (err) {
       setError(
         err instanceof Error
@@ -66,7 +65,12 @@ export default function JoinRoomPage() {
         width="100%"
       >
         <Stack spacing={1}>
-          <Typography variant="h4" fontWeight={700}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+            }}
+          >
             Rejoindre une salle
           </Typography>
 
@@ -86,7 +90,9 @@ export default function JoinRoomPage() {
           placeholder="ABC123"
           value={roomCode}
           onChange={(event) =>
-            setRoomCode(event.target.value.toUpperCase())
+            setRoomCode(
+              event.target.value.toUpperCase(),
+            )
           }
           fullWidth
           required
@@ -114,7 +120,9 @@ export default function JoinRoomPage() {
           size="large"
           disabled={loading}
         >
-          {loading ? 'Connexion...' : 'Rejoindre la salle'}
+          {loading
+            ? 'Connexion...'
+            : 'Rejoindre la salle'}
         </Button>
 
         <Button

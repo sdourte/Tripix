@@ -60,10 +60,16 @@ export default function DayResultsPage() {
   const [error, setError] =
     useState('')
 
+  /* ==========================================================
+     CHARGEMENT DES RÉSULTATS
+     ========================================================== */
+
   useEffect(() => {
     async function loadResults() {
       if (!dayId) {
-        setError('Journée invalide.')
+        setError(
+          'Journée invalide.',
+        )
         setLoading(false)
         return
       }
@@ -94,7 +100,9 @@ export default function DayResultsPage() {
             ),
           )
 
-        setPhotos(photosWithUrls)
+        setPhotos(
+          photosWithUrls,
+        )
       } catch (err) {
         console.error(
           'Erreur chargement résultats:',
@@ -114,6 +122,10 @@ export default function DayResultsPage() {
     loadResults()
   }, [dayId])
 
+  /* ==========================================================
+     LOADING
+     ========================================================== */
+
   if (loading) {
     return (
       <Box
@@ -129,11 +141,17 @@ export default function DayResultsPage() {
     )
   }
 
+  /* ==========================================================
+     ERROR
+     ========================================================== */
+
   if (error || !day) {
     return (
       <Container
         maxWidth="md"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Alert severity="error">
           {error ||
@@ -142,6 +160,10 @@ export default function DayResultsPage() {
       </Container>
     )
   }
+
+  /* ==========================================================
+     PAGE
+     ========================================================== */
 
   return (
     <Container
@@ -155,6 +177,10 @@ export default function DayResultsPage() {
     >
       <Stack spacing={4}>
 
+        {/* ==================================================
+            HEADER
+            ================================================== */}
+
         <Box>
           <Typography
             variant="body2"
@@ -165,7 +191,9 @@ export default function DayResultsPage() {
 
           <Typography
             variant="h3"
-            fontWeight={800}
+            sx={{
+              fontWeight: 800,
+            }}
           >
             Jour {day.day_number}
           </Typography>
@@ -174,16 +202,18 @@ export default function DayResultsPage() {
             <Typography
               variant="h6"
               color="text.secondary"
-              sx={{ mt: 1 }}
+              sx={{
+                mt: 1,
+              }}
             >
               {day.theme}
             </Typography>
           )}
         </Box>
 
-        {/* ================================================
+        {/* ==================================================
             CLASSEMENT JOUEURS
-            ================================================ */}
+            ================================================== */}
 
         <Card>
           <CardContent>
@@ -192,156 +222,230 @@ export default function DayResultsPage() {
               <Stack
                 direction="row"
                 spacing={1}
-                alignItems="center"
+                sx={{
+                  alignItems: 'center',
+                }}
               >
                 <EmojiEventsIcon />
 
                 <Typography
                   variant="h5"
-                  fontWeight={800}
+                  sx={{
+                    fontWeight: 800,
+                  }}
                 >
                   Classement de la journée
                 </Typography>
               </Stack>
 
-              {players.map(
-                (player, index) => (
-                  <Box
-                    key={player.player_id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent:
-                        'space-between',
-                      gap: 2,
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
+              {players.length === 0 ? (
+                <Typography
+                  color="text.secondary"
+                >
+                  Aucun résultat disponible.
+                </Typography>
+              ) : (
+                players.map(
+                  (
+                    player,
+                    index,
+                  ) => (
+                    <Box
+                      key={
+                        player.player_id
+                      }
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent:
+                          'space-between',
+                        gap: 2,
+                      }}
                     >
-                      <Typography
-                        fontWeight={800}
+                      <Stack
+                        direction="row"
+                        spacing={2}
                         sx={{
-                          minWidth: 35,
+                          alignItems:
+                            'center',
+                          minWidth: 0,
                         }}
                       >
-                        {index === 0
-                          ? '🥇'
-                          : index === 1
-                            ? '🥈'
-                            : index === 2
-                              ? '🥉'
-                              : `${index + 1}.`}
-                      </Typography>
+                        <Typography
+                          sx={{
+                            fontWeight: 800,
+                            minWidth: 35,
+                          }}
+                        >
+                          {index === 0
+                            ? '🥇'
+                            : index === 1
+                              ? '🥈'
+                              : index === 2
+                                ? '🥉'
+                                : `${index + 1}.`}
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            overflow:
+                              'hidden',
+                            textOverflow:
+                              'ellipsis',
+                            whiteSpace:
+                              'nowrap',
+                          }}
+                        >
+                          {
+                            player.player_name
+                          }
+                        </Typography>
+                      </Stack>
 
                       <Typography
-                        fontWeight={600}
+                        sx={{
+                          fontWeight: 800,
+                          whiteSpace:
+                            'nowrap',
+                        }}
                       >
-                        {player.player_name}
+                        {
+                          player.total_points
+                        }{' '}
+                        pts
                       </Typography>
-                    </Stack>
-
-                    <Typography
-                      fontWeight={800}
-                    >
-                      {player.total_points}{' '}
-                      pts
-                    </Typography>
-                  </Box>
-                ),
+                    </Box>
+                  ),
+                )
               )}
 
             </Stack>
           </CardContent>
         </Card>
 
-        {/* ================================================
+        {/* ==================================================
             CLASSEMENT PHOTOS
-            ================================================ */}
+            ================================================== */}
 
         <Box>
           <Typography
             variant="h5"
-            fontWeight={800}
-            gutterBottom
+            sx={{
+              fontWeight: 800,
+              mb: 1,
+            }}
           >
             Classement des photos
           </Typography>
 
           <Typography
             color="text.secondary"
-            sx={{ mb: 3 }}
-          >
-            Les photos sont classées selon
-            les points reçus pendant les votes.
-          </Typography>
-
-          <Box
             sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-                md: 'repeat(3, 1fr)',
-              },
-              gap: 3,
+              mb: 3,
             }}
           >
-            {photos.map(
-              (photo, index) => (
-                <Card
-                  key={photo.photo_id}
-                  sx={{
-                    overflow: 'hidden',
-                  }}
-                >
-                  <CardMedia
-                    component="img"
-                    image={photo.url}
-                    alt=""
+            Les photos sont classées
+            selon les points reçus
+            pendant les votes.
+          </Typography>
+
+          {photos.length === 0 ? (
+            <Alert severity="info">
+              Aucun résultat photo
+              disponible.
+            </Alert>
+          ) : (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                },
+                gap: 3,
+              }}
+            >
+              {photos.map(
+                (
+                  photo,
+                  index,
+                ) => (
+                  <Card
+                    key={
+                      photo.photo_id
+                    }
                     sx={{
-                      height: 280,
-                      objectFit: 'cover',
+                      overflow:
+                        'hidden',
                     }}
-                  />
+                  >
+                    <CardMedia
+                      component="img"
+                      image={photo.url}
+                      alt=""
+                      sx={{
+                        height: {
+                          xs: 280,
+                          sm: 240,
+                          md: 280,
+                        },
+                        objectFit:
+                          'cover',
+                      }}
+                    />
 
-                  <CardContent>
-                    <Stack spacing={1}>
+                    <CardContent>
+                      <Stack spacing={1}>
 
-                      <Typography
-                        variant="h6"
-                        fontWeight={800}
-                      >
-                        {index + 1}.{' '}
-                        {photo.player_name}
-                      </Typography>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 800,
+                          }}
+                        >
+                          {index + 1}.{' '}
+                          {
+                            photo.player_name
+                          }
+                        </Typography>
 
-                      <Typography
-                        color="text.secondary"
-                      >
-                        Photo{' '}
-                        {photo.photo_number}
-                      </Typography>
+                        <Typography
+                          color="text.secondary"
+                        >
+                          Photo{' '}
+                          {
+                            photo.photo_number
+                          }
+                        </Typography>
 
-                      <Divider />
+                        <Divider />
 
-                      <Typography
-                        variant="h5"
-                        fontWeight={800}
-                      >
-                        {photo.total_points}{' '}
-                        points
-                      </Typography>
+                        <Typography
+                          variant="h5"
+                          sx={{
+                            fontWeight: 800,
+                          }}
+                        >
+                          {
+                            photo.total_points
+                          }{' '}
+                          points
+                        </Typography>
 
-                    </Stack>
-                  </CardContent>
-                </Card>
-              ),
-            )}
-          </Box>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ),
+              )}
+            </Box>
+          )}
         </Box>
+
+        {/* ==================================================
+            RETOUR
+            ================================================== */}
 
         <Box
           sx={{
@@ -351,13 +455,16 @@ export default function DayResultsPage() {
         >
           <Typography
             component="button"
-            onClick={() => navigate(-1)}
+            onClick={() =>
+              navigate(-1)
+            }
             sx={{
               border: 0,
               background: 'none',
               cursor: 'pointer',
               color: 'text.secondary',
               font: 'inherit',
+              p: 1,
             }}
           >
             Retour

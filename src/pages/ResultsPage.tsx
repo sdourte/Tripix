@@ -233,7 +233,9 @@ export default function ResultsPage() {
     return (
       <Container
         maxWidth="md"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Stack spacing={3}>
           <Alert severity="error">
@@ -261,7 +263,9 @@ export default function ResultsPage() {
     return (
       <Container
         maxWidth="md"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Alert severity="error">
           Impossible de charger les
@@ -294,6 +298,7 @@ export default function ResultsPage() {
       <Stack spacing={4}>
 
         {/* HEADER */}
+
         <Box>
           <Typography
             variant="body2"
@@ -304,15 +309,19 @@ export default function ResultsPage() {
 
           <Typography
             variant="h3"
-            fontWeight={800}
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+              fontWeight: 800,
+            }}
           >
             Résultats
           </Typography>
 
           <Typography
             variant="h5"
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+            }}
           >
             Jour {day.day_number}
           </Typography>
@@ -320,7 +329,9 @@ export default function ResultsPage() {
           {day.theme && (
             <Typography
               color="text.secondary"
-              sx={{ mt: 1 }}
+              sx={{
+                mt: 1,
+              }}
             >
               Thème : {day.theme}
             </Typography>
@@ -339,12 +350,14 @@ export default function ResultsPage() {
         )}
 
         {/* MESSAGE */}
+
         <Alert severity="success">
           Tous les participants ont
           terminé leur vote.
         </Alert>
 
         {/* RESULTATS */}
+
         <Stack spacing={3}>
 
           {results.map(
@@ -382,6 +395,7 @@ export default function ResultsPage() {
                   >
 
                     {/* PHOTO */}
+
                     <CardMedia
                       component="img"
                       image={result.url}
@@ -397,6 +411,7 @@ export default function ResultsPage() {
                     />
 
                     {/* INFOS */}
+
                     <CardContent
                       sx={{
                         p: {
@@ -404,8 +419,7 @@ export default function ResultsPage() {
                           md: 4,
                         },
                         display: 'flex',
-                        alignItems:
-                          'center',
+                        alignItems: 'center',
                       }}
                     >
                       <Stack
@@ -418,7 +432,10 @@ export default function ResultsPage() {
                         <Stack
                           direction="row"
                           spacing={2}
-                          alignItems="center"
+                          sx={{
+                            alignItems:
+                              'center',
+                          }}
                         >
                           {isWinner && (
                             <EmojiEventsIcon
@@ -432,14 +449,19 @@ export default function ResultsPage() {
 
                           <Typography
                             variant="h4"
-                            fontWeight={800}
+                            sx={{
+                              fontWeight: 800,
+                            }}
                           >
                             {rank}
+
                             <Typography
                               component="span"
                               variant="h6"
                               color="text.secondary"
-                              sx={{ ml: 1 }}
+                              sx={{
+                                ml: 1,
+                              }}
                             >
                               {rank === 1
                                 ? 'ère place'
@@ -452,7 +474,9 @@ export default function ResultsPage() {
 
                         <Typography
                           variant="h5"
-                          fontWeight={700}
+                          sx={{
+                            fontWeight: 700,
+                          }}
                         >
                           {result.player_name}
                         </Typography>
@@ -464,6 +488,7 @@ export default function ResultsPage() {
                           }}
                           spacing={2}
                         >
+
                           <Box>
                             <Typography
                               variant="body2"
@@ -474,7 +499,9 @@ export default function ResultsPage() {
 
                             <Typography
                               variant="h4"
-                              fontWeight={800}
+                              sx={{
+                                fontWeight: 800,
+                              }}
                             >
                               {
                                 result.total_points
@@ -492,7 +519,9 @@ export default function ResultsPage() {
 
                             <Typography
                               variant="h4"
-                              fontWeight={800}
+                              sx={{
+                                fontWeight: 800,
+                              }}
                             >
                               {
                                 result.average_points.toFixed(
@@ -512,17 +541,21 @@ export default function ResultsPage() {
 
                             <Typography
                               variant="h4"
-                              fontWeight={800}
+                              sx={{
+                                fontWeight: 800,
+                              }}
                             >
                               {
                                 result.vote_count
                               }
                             </Typography>
                           </Box>
+
                         </Stack>
 
                       </Stack>
                     </CardContent>
+
                   </Box>
                 </Card>
               )
@@ -532,13 +565,17 @@ export default function ResultsPage() {
         </Stack>
 
         {/* ACTIONS */}
+
         <Stack
           direction={{
             xs: 'column',
             sm: 'row',
           }}
           spacing={2}
-          justifyContent="center"
+          sx={{
+            justifyContent:
+              'center',
+          }}
         >
           <Button
             variant="outlined"

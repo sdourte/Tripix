@@ -25,9 +25,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
 
   const [rooms, setRooms] = useState<UserRoom[]>([])
-  const [userId, setUserId] = useState<string | null>(
-    null,
-  )
+  const [userId, setUserId] = useState<string | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -91,7 +89,7 @@ export default function DashboardPage() {
         <Stack spacing={1}>
           <Typography
             variant="h4"
-            fontWeight={700}
+            sx={{ fontWeight: 700 }}
           >
             Mes salles
           </Typography>
@@ -135,7 +133,7 @@ export default function DashboardPage() {
             <Stack spacing={2}>
               <Typography
                 variant="h6"
-                fontWeight={700}
+                sx={{ fontWeight: 700 }}
               >
                 Aucune salle
               </Typography>
@@ -190,14 +188,16 @@ export default function DashboardPage() {
                       {/* Nom + statut */}
                       <Stack
                         direction="row"
-                        justifyContent="space-between"
-                        alignItems="flex-start"
                         spacing={2}
+                        sx={{
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
                       >
                         <Stack spacing={0.5}>
                           <Typography
                             variant="h6"
-                            fontWeight={700}
+                            sx={{ fontWeight: 700 }}
                           >
                             {room.name}
                           </Typography>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                               ? 'primary'
                               : 'text.secondary'
                           }
-                          fontWeight={600}
+                          sx={{ fontWeight: 600 }}
                         >
                           {isAdmin
                             ? 'ADMIN'

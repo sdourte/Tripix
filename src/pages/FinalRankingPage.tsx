@@ -47,6 +47,10 @@ export default function FinalRankingPage() {
   const [error, setError] =
     useState('')
 
+  /* ==========================================================
+     CHARGEMENT DU CLASSEMENT
+     ========================================================== */
+
   useEffect(() => {
     async function loadRanking() {
       if (!code) {
@@ -85,11 +89,10 @@ export default function FinalRankingPage() {
     loadRanking()
   }, [code])
 
-  /*
-   * Actualisation régulière afin que le classement
-   * reste à jour lorsqu'une nouvelle journée
-   * est terminée par l'admin.
-   */
+  /* ==========================================================
+     ACTUALISATION AUTOMATIQUE
+     ========================================================== */
+
   useEffect(() => {
     if (!room) {
       return
@@ -104,7 +107,9 @@ export default function FinalRankingPage() {
                 room.id,
               )
 
-            setRanking(rankingData)
+            setRanking(
+              rankingData,
+            )
           } catch (err) {
             console.error(
               'Erreur actualisation classement:',
@@ -116,9 +121,15 @@ export default function FinalRankingPage() {
       )
 
     return () => {
-      window.clearInterval(interval)
+      window.clearInterval(
+        interval,
+      )
     }
   }, [room?.id])
+
+  /* ==========================================================
+     LOADING
+     ========================================================== */
 
   if (loading) {
     return (
@@ -135,11 +146,17 @@ export default function FinalRankingPage() {
     )
   }
 
+  /* ==========================================================
+     ERROR
+     ========================================================== */
+
   if (error || !room) {
     return (
       <Container
         maxWidth="md"
-        sx={{ py: 5 }}
+        sx={{
+          py: 5,
+        }}
       >
         <Alert severity="error">
           {error ||
@@ -148,6 +165,10 @@ export default function FinalRankingPage() {
       </Container>
     )
   }
+
+  /* ==========================================================
+     PAGE
+     ========================================================== */
 
   return (
     <Container
@@ -161,7 +182,15 @@ export default function FinalRankingPage() {
     >
       <Stack spacing={4}>
 
-        <Box textAlign="center">
+        {/* ==================================================
+            HEADER
+            ================================================== */}
+
+        <Box
+          sx={{
+            textAlign: 'center',
+          }}
+        >
           <EmojiEventsIcon
             sx={{
               fontSize: 60,
@@ -170,14 +199,18 @@ export default function FinalRankingPage() {
 
           <Typography
             variant="h3"
-            fontWeight={800}
+            sx={{
+              fontWeight: 800,
+            }}
           >
             Classement final
           </Typography>
 
           <Typography
             color="text.secondary"
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+            }}
           >
             {room.name}
           </Typography>
@@ -185,98 +218,164 @@ export default function FinalRankingPage() {
           <Typography
             variant="body2"
             color="text.secondary"
-            sx={{ mt: 1 }}
+            sx={{
+              mt: 1,
+            }}
           >
-            Seules les journées terminées
-            sont comptabilisées.
+            Seules les journées
+            terminées sont
+            comptabilisées.
           </Typography>
         </Box>
+
+        {/* ==================================================
+            CLASSEMENT
+            ================================================== */}
 
         <Card>
           <CardContent>
             <Stack spacing={2}>
 
-              {ranking.map(
-                (player, index) => (
-                  <Box
-                    key={player.player_id}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent:
-                        'space-between',
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      backgroundColor:
-                        index < 3
-                          ? 'action.hover'
-                          : 'transparent',
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
+              {ranking.length === 0 ? (
+                <Typography
+                  color="text.secondary"
+                  sx={{
+                    textAlign: 'center',
+                    py: 2,
+                  }}
+                >
+                  Aucun classement
+                  disponible pour
+                  le moment.
+                </Typography>
+              ) : (
+                ranking.map(
+                  (
+                    player,
+                    index,
+                  ) => (
+                    <Box
+                      key={
+                        player.player_id
+                      }
+                      sx={{
+                        display:
+                          'flex',
+                        alignItems:
+                          'center',
+                        justifyContent:
+                          'space-between',
+                        gap: 2,
+                        p: 2,
+                        borderRadius: 2,
+                        backgroundColor:
+                          index < 3
+                            ? 'action.hover'
+                            : 'transparent',
+                      }}
                     >
-                      <Typography
-                        variant="h5"
-                        fontWeight={800}
+
+                      {/* JOUEUR */}
+
+                      <Stack
+                        direction="row"
+                        spacing={2}
                         sx={{
-                          minWidth: 45,
+                          alignItems:
+                            'center',
+                          minWidth: 0,
                         }}
                       >
-                        {index === 0
-                          ? '🥇'
-                          : index === 1
-                            ? '🥈'
-                            : index === 2
-                              ? '🥉'
-                              : index + 1}
-                      </Typography>
+                        <Typography
+                          variant="h5"
+                          sx={{
+                            fontWeight: 800,
+                            minWidth: 45,
+                          }}
+                        >
+                          {index ===
+                          0
+                            ? '🥇'
+                            : index ===
+                                1
+                              ? '🥈'
+                              : index ===
+                                  2
+                                ? '🥉'
+                                : index +
+                                  1}
+                        </Typography>
+
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight:
+                              index < 3
+                                ? 800
+                                : 600,
+                            overflow:
+                              'hidden',
+                            textOverflow:
+                              'ellipsis',
+                            whiteSpace:
+                              'nowrap',
+                          }}
+                        >
+                          {
+                            player.player_name
+                          }
+                        </Typography>
+                      </Stack>
+
+                      {/* POINTS */}
 
                       <Typography
                         variant="h6"
-                        fontWeight={
-                          index < 3
-                            ? 800
-                            : 600
-                        }
+                        sx={{
+                          fontWeight: 800,
+                          whiteSpace:
+                            'nowrap',
+                        }}
                       >
-                        {player.player_name}
+                        {
+                          player.total_points
+                        }{' '}
+                        pts
                       </Typography>
-                    </Stack>
 
-                    <Typography
-                      variant="h6"
-                      fontWeight={800}
-                    >
-                      {player.total_points}{' '}
-                      pts
-                    </Typography>
-                  </Box>
-                ),
+                    </Box>
+                  ),
+                )
               )}
 
             </Stack>
           </CardContent>
         </Card>
 
+        {/* ==================================================
+            RETOUR
+            ================================================== */}
+
         <Box
           sx={{
             display: 'flex',
-            justifyContent: 'center',
+            justifyContent:
+              'center',
           }}
         >
           <Typography
             component="button"
-            onClick={() => navigate(-1)}
+            onClick={() =>
+              navigate(-1)
+            }
             sx={{
               border: 0,
               background: 'none',
               cursor: 'pointer',
-              color: 'text.secondary',
+              color:
+                'text.secondary',
               font: 'inherit',
+              p: 1,
             }}
           >
             Retour

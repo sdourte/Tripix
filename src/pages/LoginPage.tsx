@@ -61,7 +61,12 @@ export default function LoginPage() {
         width="100%"
       >
         <Stack spacing={1}>
-          <Typography variant="h4" fontWeight={700}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+            }}
+          >
             Se connecter
           </Typography>
 
@@ -111,7 +116,9 @@ export default function LoginPage() {
 
         <Button
           variant="text"
-          onClick={() => navigate('/register')}
+          onClick={() =>
+            navigate('/register')
+          }
           disabled={loading}
         >
           Créer un compte
@@ -119,7 +126,9 @@ export default function LoginPage() {
 
         <Button
           variant="text"
-          onClick={() => navigate('/')}
+          onClick={() =>
+            navigate('/')
+          }
           disabled={loading}
         >
           Retour

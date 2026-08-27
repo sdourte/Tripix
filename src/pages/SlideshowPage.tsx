@@ -57,8 +57,6 @@ export default function SlideshowPage() {
 
   /*
    * Indique si une transition est actuellement en cours.
-   * Cela permet d'éviter certains changements trop rapides
-   * lorsque l'utilisateur utilise les flèches.
    */
   const [isTransitioning, setIsTransitioning] =
     useState(false)
@@ -70,8 +68,7 @@ export default function SlideshowPage() {
     useState(false)
 
   /*
-   * Référence vers la zone du diaporama pour
-   * pouvoir demander le plein écran.
+   * Référence vers la zone du diaporama.
    */
   const slideshowRef =
     useRef<HTMLDivElement | null>(null)
@@ -165,11 +162,6 @@ export default function SlideshowPage() {
         "Impossible d'activer le plein écran:",
         err,
       )
-
-      /*
-       * Si le navigateur refuse le fullscreen,
-       * le diaporama continue simplement en mode fenêtre.
-       */
     }
   }
 
@@ -225,19 +217,9 @@ export default function SlideshowPage() {
     setFinished(false)
     setIsTransitioning(false)
 
-    /*
-     * On passe en mode diaporama avant de demander
-     * le plein écran.
-     */
     setStarted(true)
 
     if (displayMode === 'fullscreen') {
-      /*
-       * Le navigateur n'autorise généralement le fullscreen
-       * que dans le contexte direct d'un clic utilisateur.
-       *
-       * On attend donc que le DOM soit rendu.
-       */
       window.setTimeout(() => {
         enterFullscreen()
       }, 50)
@@ -259,10 +241,6 @@ export default function SlideshowPage() {
       return
     }
 
-    /*
-     * Si nous sommes déjà sur la dernière photo,
-     * le diaporama est terminé.
-     */
     if (currentIndex >= slides.length - 1) {
       clearSlideTimer()
       setFinished(true)
@@ -271,17 +249,10 @@ export default function SlideshowPage() {
 
     setIsTransitioning(true)
 
-    /*
-     * La nouvelle photo devient visible.
-     */
     setCurrentIndex(
       (index) => index + 1,
     )
 
-    /*
-     * On laisse le temps au fondu de se terminer
-     * avant d'autoriser une nouvelle transition.
-     */
     window.setTimeout(() => {
       setIsTransitioning(false)
     }, FADE_DURATION)
@@ -319,10 +290,6 @@ export default function SlideshowPage() {
    */
 
   useEffect(() => {
-    /*
-     * Aucun timer avant que le bouton "Lancer"
-     * n'ait été pressé.
-     */
     if (
       !started ||
       finished ||
@@ -374,13 +341,6 @@ export default function SlideshowPage() {
       }
 
       if (event.key === 'Escape') {
-        /*
-         * Si le navigateur est en fullscreen,
-         * Escape quitte normalement le fullscreen.
-         *
-         * On ne navigue pas immédiatement afin de
-         * laisser le comportement natif du navigateur.
-         */
         if (document.fullscreenElement) {
           exitFullscreen()
         } else {
@@ -432,21 +392,12 @@ export default function SlideshowPage() {
     setIsTransitioning(false)
     setCurrentIndex(0)
 
-    /*
-     * Si l'utilisateur avait choisi le plein écran,
-     * on le remet également en plein écran.
-     */
     if (
       displayMode === 'fullscreen' &&
       !document.fullscreenElement
     ) {
       await enterFullscreen()
     }
-
-    /*
-     * Le useEffect du timer reprendra automatiquement
-     * le défilement.
-     */
   }
 
   /*
@@ -578,7 +529,9 @@ export default function SlideshowPage() {
             <Box>
               <Typography
                 variant="h4"
-                fontWeight={800}
+                sx={{
+                  fontWeight: 800,
+                }}
                 gutterBottom
               >
                 Diaporama
@@ -598,7 +551,9 @@ export default function SlideshowPage() {
             <Box>
               <Typography
                 variant="h6"
-                fontWeight={700}
+                sx={{
+                  fontWeight: 700,
+                }}
                 gutterBottom
               >
                 Mode d'affichage
@@ -622,7 +577,9 @@ export default function SlideshowPage() {
                     label={
                       <Box>
                         <Typography
-                          fontWeight={600}
+                          sx={{
+                            fontWeight: 600,
+                          }}
                         >
                           Plein écran
                         </Typography>
@@ -646,7 +603,9 @@ export default function SlideshowPage() {
                     label={
                       <Box>
                         <Typography
-                          fontWeight={600}
+                          sx={{
+                            fontWeight: 600,
+                          }}
                         >
                           Fenêtre normale
                         </Typography>
@@ -729,17 +688,17 @@ export default function SlideshowPage() {
       >
         <Stack
           spacing={4}
-          alignItems="center"
           sx={{
             maxWidth: 650,
             width: '100%',
+            alignItems: 'center',
           }}
         >
           <Box>
             <Typography
               variant="h2"
-              fontWeight={800}
               sx={{
+                fontWeight: 800,
                 mb: 2,
                 fontSize: {
                   xs: '2.5rem',
@@ -840,11 +799,6 @@ export default function SlideshowPage() {
         flexDirection: 'column',
         overflow: 'hidden',
 
-        /*
-         * Lorsque le navigateur passe réellement
-         * en fullscreen, cette règle permet de garantir
-         * le fond noir.
-         */
         '&:fullscreen': {
           width: '100vw',
           height: '100vh',
@@ -852,9 +806,7 @@ export default function SlideshowPage() {
         },
       }}
     >
-      {/* ======================================================
-          PHOTO
-          ====================================================== */}
+      {/* PHOTO */}
 
       <Box
         sx={{
@@ -871,13 +823,6 @@ export default function SlideshowPage() {
           },
         }}
       >
-        {/*
-         * Image actuelle.
-         *
-         * L'opacité est animée par CSS.
-         * Cela donne un vrai fondu lorsque currentIndex
-         * change.
-         */}
         <Box
           component="img"
           src={currentSlide.url}
@@ -894,16 +839,12 @@ export default function SlideshowPage() {
             },
             userSelect: 'none',
             pointerEvents: 'none',
-
             opacity: 1,
-
             transition: `opacity ${FADE_DURATION}ms ease-in-out`,
           }}
         />
 
-        {/* ==================================================
-            BOUTON PRÉCÉDENT
-            ================================================== */}
+        {/* BOUTON PRÉCÉDENT */}
 
         {currentIndex > 0 && (
           <Button
@@ -953,9 +894,7 @@ export default function SlideshowPage() {
           </Button>
         )}
 
-        {/* ==================================================
-            BOUTON SUIVANT
-            ================================================== */}
+        {/* BOUTON SUIVANT */}
 
         {currentIndex <
           slides.length - 1 && (
@@ -1004,9 +943,7 @@ export default function SlideshowPage() {
           </Button>
         )}
 
-        {/* ==================================================
-            COMPTEUR
-            ================================================== */}
+        {/* COMPTEUR */}
 
         <Box
           sx={{
@@ -1038,9 +975,7 @@ export default function SlideshowPage() {
         </Box>
       </Box>
 
-      {/* ======================================================
-          BARRE INFÉRIEURE
-          ====================================================== */}
+      {/* BARRE INFÉRIEURE */}
 
       <Box
         sx={{

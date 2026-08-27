@@ -1,4 +1,5 @@
-import { FormEvent, useState } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   Alert,
   Button,
@@ -63,10 +64,13 @@ export default function CreateRoomPage() {
         component="form"
         onSubmit={handleSubmit}
         spacing={3}
-        width="100%"
+        sx={{ width: '100%' }}
       >
         <Stack spacing={1}>
-          <Typography variant="h4" fontWeight={700}>
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: 700 }}
+          >
             Créer une salle
           </Typography>
 
