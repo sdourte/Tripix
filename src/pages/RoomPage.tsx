@@ -762,7 +762,16 @@ export default function RoomPage() {
     <>
       <Container
         maxWidth="sm"
-        sx={{ py: 5 }}
+        sx={{
+          py: {
+            xs: 3,
+            sm: 5,
+          },
+          px: {
+            xs: 2,
+            sm: 3,
+          },
+        }}
       >
         <Stack spacing={3}>
 
@@ -774,6 +783,12 @@ export default function RoomPage() {
             <Typography
               variant="h4"
               fontWeight={700}
+              sx={{
+                fontSize: {
+                  xs: '1.8rem',
+                  sm: '2.125rem',
+                },
+              }}
             >
               {room.name}
             </Typography>
@@ -803,7 +818,10 @@ export default function RoomPage() {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: {
+                xs: 2.5,
+                sm: 3,
+              },
               textAlign: 'center',
               border: '1px solid',
               borderColor: 'divider',
@@ -820,7 +838,13 @@ export default function RoomPage() {
               variant="h3"
               fontWeight={800}
               letterSpacing={4}
-              sx={{ mt: 1 }}
+              sx={{
+                mt: 1,
+                fontSize: {
+                  xs: '2.5rem',
+                  sm: '3rem',
+                },
+              }}
             >
               {room.code}
             </Typography>
@@ -841,7 +865,10 @@ export default function RoomPage() {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: {
+                xs: 2.5,
+                sm: 3,
+              },
               border: '1px solid',
               borderColor: 'divider',
             }}
@@ -864,9 +891,16 @@ export default function RoomPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
+                      gap: 2,
                     }}
                   >
-                    <Typography>
+                    <Typography
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minWidth: 0,
+                      }}
+                    >
                       {player.name}
                     </Typography>
 
@@ -876,6 +910,9 @@ export default function RoomPage() {
                         variant="body2"
                         color="primary"
                         fontWeight={600}
+                        sx={{
+                          flexShrink: 0,
+                        }}
                       >
                         ADMIN
                       </Typography>
@@ -893,11 +930,15 @@ export default function RoomPage() {
           <Button
             variant="contained"
             size="large"
+            fullWidth
             onClick={() =>
               navigate(
                 `/room/${room.code}/ranking`,
               )
             }
+            sx={{
+              minHeight: 52,
+            }}
           >
             Classement final
           </Button>
@@ -909,7 +950,10 @@ export default function RoomPage() {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: {
+                xs: 2,
+                sm: 3,
+              },
               border: '1px solid',
               borderColor: 'divider',
             }}
@@ -920,11 +964,13 @@ export default function RoomPage() {
                   Titre + bouton
                   ------------------------------------------------- */}
 
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-                spacing={2}
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                }}
               >
                 <Typography
                   variant="h6"
@@ -939,11 +985,18 @@ export default function RoomPage() {
                     onClick={
                       handleCreateDay
                     }
+                    sx={{
+                      flexShrink: 0,
+                      minWidth: {
+                        xs: 92,
+                        sm: 100,
+                      },
+                    }}
                   >
                     Ajouter
                   </Button>
                 )}
-              </Stack>
+              </Box>
 
               <Divider />
 
@@ -967,7 +1020,10 @@ export default function RoomPage() {
                         )
                       }
                       sx={{
-                        p: 2,
+                        p: {
+                          xs: 2,
+                          sm: 2.5,
+                        },
                         border: '1px solid',
                         borderColor:
                           'divider',
@@ -1001,11 +1057,19 @@ export default function RoomPage() {
                           <Typography
                             variant="h6"
                             fontWeight={700}
+                            sx={{
+                              mt: 0.25,
+                              wordBreak: 'break-word',
+                            }}
                           >
                             {day.title}
                           </Typography>
 
-                          <Typography>
+                          <Typography
+                            sx={{
+                              wordBreak: 'break-word',
+                            }}
+                          >
                             Thème : {day.theme}
                           </Typography>
                         </Box>
@@ -1029,16 +1093,20 @@ export default function RoomPage() {
                             --------------------------------------- */}
 
                         {isAdmin && (
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            flexWrap="wrap"
-                            useFlexGap
-                            onClick={(
-                              event,
-                            ) =>
+                          <Box
+                            onClick={(event) =>
                               event.stopPropagation()
                             }
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: {
+                                xs: 'repeat(2, minmax(0, 1fr))',
+                                sm: 'repeat(4, minmax(0, 1fr))',
+                              },
+                              gap: 1,
+                              width: '100%',
+                              pt: 0.5,
+                            }}
                           >
 
                             {/* ===================================
@@ -1048,11 +1116,21 @@ export default function RoomPage() {
                             <Button
                               variant="outlined"
                               size="small"
+                              fullWidth
                               onClick={() =>
                                 handleOpenEditDay(
                                   day,
                                 )
                               }
+                              sx={{
+                                minHeight: {
+                                  xs: 52,
+                                  sm: 44,
+                                },
+                                px: 1,
+                                whiteSpace: 'normal',
+                                lineHeight: 1.2,
+                              }}
                             >
                               Modifier
                             </Button>
@@ -1064,13 +1142,45 @@ export default function RoomPage() {
                             <Button
                               variant="outlined"
                               size="small"
+                              fullWidth
                               onClick={() =>
                                 handleOpenStatusEdit(
                                   day,
                                 )
                               }
+                              sx={{
+                                minHeight: {
+                                  xs: 52,
+                                  sm: 44,
+                                },
+                                px: 1,
+                                whiteSpace: 'normal',
+                                lineHeight: 1.2,
+                              }}
                             >
-                              Modifier le statut
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: {
+                                    xs: 'inline',
+                                    sm: 'none',
+                                  },
+                                }}
+                              >
+                                Statut
+                              </Box>
+
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: {
+                                    xs: 'none',
+                                    sm: 'inline',
+                                  },
+                                }}
+                              >
+                                Modifier le statut
+                              </Box>
                             </Button>
 
                             {/* ===================================
@@ -1081,11 +1191,21 @@ export default function RoomPage() {
                               variant="outlined"
                               color="error"
                               size="small"
+                              fullWidth
                               onClick={() =>
                                 handleOpenDeleteDay(
                                   day,
                                 )
                               }
+                              sx={{
+                                minHeight: {
+                                  xs: 52,
+                                  sm: 44,
+                                },
+                                px: 1,
+                                whiteSpace: 'normal',
+                                lineHeight: 1.2,
+                              }}
                             >
                               Supprimer
                             </Button>
@@ -1099,12 +1219,22 @@ export default function RoomPage() {
                               <Button
                                 variant="contained"
                                 size="small"
+                                fullWidth
                                 onClick={() =>
                                   handleUpdateDayStatus(
                                     day.id,
                                     'active',
                                   )
                                 }
+                                sx={{
+                                  minHeight: {
+                                    xs: 52,
+                                    sm: 44,
+                                  },
+                                  px: 1,
+                                  whiteSpace: 'normal',
+                                  lineHeight: 1.2,
+                                }}
                               >
                                 Démarrer
                               </Button>
@@ -1119,14 +1249,46 @@ export default function RoomPage() {
                               <Button
                                 variant="contained"
                                 size="small"
+                                fullWidth
                                 onClick={() =>
                                   handleUpdateDayStatus(
                                     day.id,
                                     'submission',
                                   )
                                 }
+                                sx={{
+                                  minHeight: {
+                                    xs: 52,
+                                    sm: 44,
+                                  },
+                                  px: 1,
+                                  whiteSpace: 'normal',
+                                  lineHeight: 1.2,
+                                }}
                               >
-                                Ouvrir les soumissions
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'inline',
+                                      sm: 'none',
+                                    },
+                                  }}
+                                >
+                                  Soumissions
+                                </Box>
+
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'none',
+                                      sm: 'inline',
+                                    },
+                                  }}
+                                >
+                                  Ouvrir les soumissions
+                                </Box>
                               </Button>
                             )}
 
@@ -1139,14 +1301,46 @@ export default function RoomPage() {
                               <Button
                                 variant="contained"
                                 size="small"
+                                fullWidth
                                 onClick={() =>
                                   handleUpdateDayStatus(
                                     day.id,
                                     'voting',
                                   )
                                 }
+                                sx={{
+                                  minHeight: {
+                                    xs: 52,
+                                    sm: 44,
+                                  },
+                                  px: 1,
+                                  whiteSpace: 'normal',
+                                  lineHeight: 1.2,
+                                }}
                               >
-                                Commencer les votes
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'inline',
+                                      sm: 'none',
+                                    },
+                                  }}
+                                >
+                                  Commencer
+                                </Box>
+
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'none',
+                                      sm: 'inline',
+                                    },
+                                  }}
+                                >
+                                  Commencer les votes
+                                </Box>
                               </Button>
                             )}
 
@@ -1159,18 +1353,50 @@ export default function RoomPage() {
                               <Button
                                 variant="contained"
                                 size="small"
+                                fullWidth
                                 onClick={() =>
                                   handleUpdateDayStatus(
                                     day.id,
                                     'finished',
                                   )
                                 }
+                                sx={{
+                                  minHeight: {
+                                    xs: 52,
+                                    sm: 44,
+                                  },
+                                  px: 1,
+                                  whiteSpace: 'normal',
+                                  lineHeight: 1.2,
+                                }}
                               >
-                                Terminer la journée
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'inline',
+                                      sm: 'none',
+                                    },
+                                  }}
+                                >
+                                  Terminer
+                                </Box>
+
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: {
+                                      xs: 'none',
+                                      sm: 'inline',
+                                    },
+                                  }}
+                                >
+                                  Terminer la journée
+                                </Box>
                               </Button>
                             )}
 
-                          </Stack>
+                          </Box>
                         )}
 
                       </Stack>
@@ -1239,7 +1465,13 @@ export default function RoomPage() {
           </Stack>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+            gap: 1,
+          }}
+        >
           <Button
             onClick={
               handleCloseEditDay
@@ -1325,10 +1557,6 @@ export default function RoomPage() {
                 Soumissions
               </option>
 
-              <option value="slideshow">
-                Diaporama
-              </option>
-
               <option value="voting">
                 Votes
               </option>
@@ -1346,7 +1574,13 @@ export default function RoomPage() {
           </Stack>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+            gap: 1,
+          }}
+        >
           <Button
             onClick={
               handleCloseStatusEdit
@@ -1388,7 +1622,6 @@ export default function RoomPage() {
 
         <DialogContent>
           <Stack spacing={2}>
-
             <Typography>
               Tu es sur le point de supprimer :
             </Typography>
@@ -1409,11 +1642,16 @@ export default function RoomPage() {
               des données associées, la base de
               données peut empêcher sa suppression.
             </Typography>
-
           </Stack>
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+            gap: 1,
+          }}
+        >
           <Button
             onClick={
               handleCloseDeleteDay
