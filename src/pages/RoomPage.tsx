@@ -100,6 +100,9 @@ export default function RoomPage() {
    * ============================================================
    * Realtime — Joueurs
    * ============================================================
+   *
+   * Lorsqu'un participant rejoint la salle, tous les utilisateurs
+   * présents dans la salle voient immédiatement la liste mise à jour.
    */
 
   useEffect(() => {
@@ -136,12 +139,25 @@ export default function RoomPage() {
     return () => {
       supabase.removeChannel(playersChannel)
     }
-  }, [room])
+  }, [room?.id])
 
   /*
    * ============================================================
    * Realtime — Journées
    * ============================================================
+   *
+   * Chaque modification de la table `days` concernant cette salle
+   * provoque automatiquement un rechargement de la liste.
+   *
+   * Cela permet notamment :
+   *
+   * - création d'une journée par l'admin
+   * - changement de statut
+   * - suppression future d'une journée
+   * - modification future d'une journée
+   *
+   * Tous les participants présents dans la salle reçoivent
+   * automatiquement la modification.
    */
 
   useEffect(() => {
@@ -173,12 +189,31 @@ export default function RoomPage() {
           }
         },
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(
+            'Realtime journées connecté pour la salle',
+            room.id,
+          )
+        }
+
+        if (status === 'CHANNEL_ERROR') {
+          console.error(
+            'Erreur Realtime sur les journées.',
+          )
+        }
+
+        if (status === 'TIMED_OUT') {
+          console.error(
+            'Timeout de la connexion Realtime aux journées.',
+          )
+        }
+      })
 
     return () => {
       supabase.removeChannel(daysChannel)
     }
-  }, [room])
+  }, [room?.id])
 
   /*
    * ============================================================
@@ -210,16 +245,33 @@ export default function RoomPage() {
     try {
       setError('')
 
-      await createDay(
+      const newDay = await createDay(
         room.id,
         title.trim(),
         theme.trim(),
       )
 
       /*
-       * Le Realtime va automatiquement
-       * mettre la liste à jour.
+       * Mise à jour locale immédiate.
+       *
+       * Le Realtime va également recevoir l'INSERT.
+       * Pour éviter d'avoir une journée ajoutée deux fois,
+       * on vérifie si elle existe déjà avant de l'ajouter.
        */
+      setDays((currentDays) => {
+        const alreadyExists = currentDays.some(
+          (day) => day.id === newDay.id,
+        )
+
+        if (alreadyExists) {
+          return currentDays
+        }
+
+        return [...currentDays, newDay].sort(
+          (a, b) =>
+            a.day_number - b.day_number,
+        )
+      })
     } catch (err) {
       setError(
         err instanceof Error
@@ -242,15 +294,28 @@ export default function RoomPage() {
     try {
       setError('')
 
-      await updateDayStatus(
-        dayId,
-        status,
-      )
+      const updatedDay =
+        await updateDayStatus(
+          dayId,
+          status,
+        )
 
       /*
-       * Le Realtime mettra automatiquement
-       * l'interface à jour.
+       * Mise à jour locale immédiate.
+       *
+       * Cela permet à l'admin de voir le changement
+       * instantanément sans attendre le Realtime.
+       *
+       * Le Realtime fera ensuite exactement la même
+       * mise à jour pour tous les autres utilisateurs.
        */
+      setDays((currentDays) =>
+        currentDays.map((day) =>
+          day.id === updatedDay.id
+            ? updatedDay
+            : day,
+        ),
+      )
     } catch (err) {
       setError(
         err instanceof Error
@@ -335,7 +400,8 @@ export default function RoomPage() {
    * ============================================================
    */
 
-  const isAdmin = room.admin_id === userId
+  const isAdmin =
+    room.admin_id === userId
 
   /*
    * ============================================================
@@ -431,7 +497,6 @@ export default function RoomPage() {
           }}
         >
           <Stack spacing={2}>
-
             <Typography
               variant="h6"
               fontWeight={700}
@@ -442,7 +507,6 @@ export default function RoomPage() {
             <Divider />
 
             <Stack spacing={1.5}>
-
               {players.map((player) => (
                 <Box
                   key={player.id}
@@ -468,16 +532,21 @@ export default function RoomPage() {
                   )}
                 </Box>
               ))}
-
             </Stack>
           </Stack>
         </Paper>
+
+        {/* =====================================================
+            Classement final
+            ===================================================== */}
 
         <Button
           variant="contained"
           size="large"
           onClick={() =>
-            navigate(`/room/${room.code}/ranking`)
+            navigate(
+              `/room/${room.code}/ranking`,
+            )
           }
         >
           Classement final
@@ -535,11 +604,9 @@ export default function RoomPage() {
                 Aucune journée n'a encore été créée.
               </Typography>
             ) : (
-
               <Stack spacing={2}>
 
                 {days.map((day) => (
-
                   <Paper
                     key={day.id}
                     elevation={0}
@@ -562,7 +629,6 @@ export default function RoomPage() {
                       },
                     }}
                   >
-
                     <Stack spacing={1.5}>
 
                       {/* -------------------------------------------------
@@ -570,7 +636,6 @@ export default function RoomPage() {
                           ------------------------------------------------- */}
 
                       <Box>
-
                         <Typography
                           variant="body2"
                           color="text.secondary"
@@ -589,7 +654,6 @@ export default function RoomPage() {
                         <Typography>
                           Thème : {day.theme}
                         </Typography>
-
                       </Box>
 
                       {/* -------------------------------------------------
@@ -600,7 +664,8 @@ export default function RoomPage() {
                         variant="body2"
                         color="text.secondary"
                       >
-                        Statut : {getStatusLabel(
+                        Statut :{' '}
+                        {getStatusLabel(
                           day.status,
                         )}
                       </Typography>
@@ -696,13 +761,10 @@ export default function RoomPage() {
                       )}
 
                     </Stack>
-
                   </Paper>
-
                 ))}
 
               </Stack>
-
             )}
 
           </Stack>
