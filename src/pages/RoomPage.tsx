@@ -5,9 +5,14 @@ import {
   Button,
   CircularProgress,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -41,6 +46,51 @@ export default function RoomPage() {
 
   /*
    * ============================================================
+   * ÉDITION D'UNE JOURNÉE
+   * ============================================================
+   */
+
+  const [editingDay, setEditingDay] =
+    useState<Day | null>(null)
+
+  const [editTitle, setEditTitle] =
+    useState('')
+
+  const [editTheme, setEditTheme] =
+    useState('')
+
+  const [savingEdit, setSavingEdit] =
+    useState(false)
+
+  /*
+   * ============================================================
+   * MODIFICATION DU STATUT
+   * ============================================================
+   */
+
+  const [statusEditingDay, setStatusEditingDay] =
+    useState<Day | null>(null)
+
+  const [selectedStatus, setSelectedStatus] =
+    useState<Day['status']>('upcoming')
+
+  const [savingStatus, setSavingStatus] =
+    useState(false)
+
+  /*
+   * ============================================================
+   * SUPPRESSION D'UNE JOURNÉE
+   * ============================================================
+   */
+
+  const [deletingDay, setDeletingDay] =
+    useState<Day | null>(null)
+
+  const [deleting, setDeleting] =
+    useState(false)
+
+  /*
+   * ============================================================
    * Chargement initial de la salle
    * ============================================================
    */
@@ -56,7 +106,10 @@ export default function RoomPage() {
       try {
         setError('')
 
-        // Utilisateur connecté
+        /*
+         * Utilisateur connecté
+         */
+
         const user = await getCurrentUser()
 
         if (!user) {
@@ -69,15 +122,24 @@ export default function RoomPage() {
 
         setUserId(user.id)
 
-        // Récupérer la salle
-        const roomData = await getRoomByCode(code)
+        /*
+         * Récupérer la salle
+         */
 
-        // Récupérer les joueurs et les journées
-        const [playersData, daysData] =
-          await Promise.all([
-            getRoomPlayers(roomData.id),
-            getRoomDays(roomData.id),
-          ])
+        const roomData =
+          await getRoomByCode(code)
+
+        /*
+         * Récupérer les joueurs et les journées
+         */
+
+        const [
+          playersData,
+          daysData,
+        ] = await Promise.all([
+          getRoomPlayers(roomData.id),
+          getRoomDays(roomData.id),
+        ])
 
         setRoom(roomData)
         setPlayers(playersData)
@@ -101,8 +163,9 @@ export default function RoomPage() {
    * Realtime — Joueurs
    * ============================================================
    *
-   * Lorsqu'un participant rejoint la salle, tous les utilisateurs
-   * présents dans la salle voient immédiatement la liste mise à jour.
+   * Lorsqu'un participant rejoint ou quitte la salle,
+   * tous les utilisateurs présents voient la liste
+   * mise à jour automatiquement.
    */
 
   useEffect(() => {
@@ -137,7 +200,9 @@ export default function RoomPage() {
       .subscribe()
 
     return () => {
-      supabase.removeChannel(playersChannel)
+      supabase.removeChannel(
+        playersChannel,
+      )
     }
   }, [room?.id])
 
@@ -146,18 +211,8 @@ export default function RoomPage() {
    * Realtime — Journées
    * ============================================================
    *
-   * Chaque modification de la table `days` concernant cette salle
-   * provoque automatiquement un rechargement de la liste.
-   *
-   * Cela permet notamment :
-   *
-   * - création d'une journée par l'admin
-   * - changement de statut
-   * - suppression future d'une journée
-   * - modification future d'une journée
-   *
-   * Tous les participants présents dans la salle reçoivent
-   * automatiquement la modification.
+   * Toute création, modification ou suppression d'une journée
+   * est automatiquement répercutée chez tous les utilisateurs.
    */
 
   useEffect(() => {
@@ -254,22 +309,27 @@ export default function RoomPage() {
       /*
        * Mise à jour locale immédiate.
        *
-       * Le Realtime va également recevoir l'INSERT.
-       * Pour éviter d'avoir une journée ajoutée deux fois,
-       * on vérifie si elle existe déjà avant de l'ajouter.
+       * Le Realtime recevra également l'INSERT.
+       * On vérifie donc que la journée n'existe pas déjà.
        */
+
       setDays((currentDays) => {
-        const alreadyExists = currentDays.some(
-          (day) => day.id === newDay.id,
-        )
+        const alreadyExists =
+          currentDays.some(
+            (day) => day.id === newDay.id,
+          )
 
         if (alreadyExists) {
           return currentDays
         }
 
-        return [...currentDays, newDay].sort(
+        return [
+          ...currentDays,
+          newDay,
+        ].sort(
           (a, b) =>
-            a.day_number - b.day_number,
+            a.day_number -
+            b.day_number,
         )
       })
     } catch (err) {
@@ -302,13 +362,8 @@ export default function RoomPage() {
 
       /*
        * Mise à jour locale immédiate.
-       *
-       * Cela permet à l'admin de voir le changement
-       * instantanément sans attendre le Realtime.
-       *
-       * Le Realtime fera ensuite exactement la même
-       * mise à jour pour tous les autres utilisateurs.
        */
+
       setDays((currentDays) =>
         currentDays.map((day) =>
           day.id === updatedDay.id
@@ -320,7 +375,7 @@ export default function RoomPage() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Impossible de modifier la journée.',
+          : 'Impossible de modifier le statut de la journée.',
       )
     }
   }
@@ -339,6 +394,300 @@ export default function RoomPage() {
     navigate(
       `/room/${room.code}/day/${dayId}`,
     )
+  }
+
+  /*
+   * ============================================================
+   * Ouvrir la fenêtre de modification
+   * ============================================================
+   */
+
+  function handleOpenEditDay(day: Day) {
+    setEditingDay(day)
+    setEditTitle(day.title)
+    setEditTheme(day.theme)
+    setError('')
+  }
+
+  /*
+   * ============================================================
+   * Fermer la fenêtre de modification
+   * ============================================================
+   */
+
+  function handleCloseEditDay() {
+    if (savingEdit) {
+      return
+    }
+
+    setEditingDay(null)
+    setEditTitle('')
+    setEditTheme('')
+  }
+
+  /*
+   * ============================================================
+   * Enregistrer les modifications d'une journée
+   * ============================================================
+   */
+
+  async function handleSaveEditDay() {
+    if (!editingDay) {
+      return
+    }
+
+    const title = editTitle.trim()
+    const theme = editTheme.trim()
+
+    if (!title) {
+      setError(
+        'Le nom de la journée est obligatoire.',
+      )
+      return
+    }
+
+    if (!theme) {
+      setError(
+        'Le thème de la journée est obligatoire.',
+      )
+      return
+    }
+
+    try {
+      setSavingEdit(true)
+      setError('')
+
+      /*
+       * UPDATE direct sur la table days.
+       *
+       * La policy RLS :
+       *
+       * "Admins can update days in their rooms"
+       *
+       * vérifie côté PostgreSQL que l'utilisateur est
+       * bien administrateur de la salle.
+       */
+
+      const { data, error: updateError } =
+        await supabase
+          .from('days')
+          .update({
+            title,
+            theme,
+          })
+          .eq('id', editingDay.id)
+          .select(`
+            id,
+            room_id,
+            day_number,
+            title,
+            theme,
+            status,
+            created_at
+          `)
+          .single()
+
+      if (updateError) {
+        throw new Error(
+          updateError.message,
+        )
+      }
+
+      if (!data) {
+        throw new Error(
+          'La journée modifiée n’a pas été retournée.',
+        )
+      }
+
+      /*
+       * Mise à jour locale immédiate.
+       */
+
+      setDays((currentDays) =>
+        currentDays.map((day) =>
+          day.id === data.id
+            ? data
+            : day,
+        ),
+      )
+
+      /*
+       * Fermer la fenêtre.
+       */
+
+      setEditingDay(null)
+      setEditTitle('')
+      setEditTheme('')
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de modifier la journée.',
+      )
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  /*
+   * ============================================================
+   * Ouvrir la modification du statut
+   * ============================================================
+   */
+
+  function handleOpenStatusEdit(day: Day) {
+    setStatusEditingDay(day)
+    setSelectedStatus(day.status)
+    setError('')
+  }
+
+  /*
+   * ============================================================
+   * Fermer la modification du statut
+   * ============================================================
+   */
+
+  function handleCloseStatusEdit() {
+    if (savingStatus) {
+      return
+    }
+
+    setStatusEditingDay(null)
+  }
+
+  /*
+   * ============================================================
+   * Enregistrer le nouveau statut
+   * ============================================================
+   */
+
+  async function handleSaveStatusEdit() {
+    if (!statusEditingDay) {
+      return
+    }
+
+    try {
+      setSavingStatus(true)
+      setError('')
+
+      const updatedDay =
+        await updateDayStatus(
+          statusEditingDay.id,
+          selectedStatus,
+        )
+
+      /*
+       * Mise à jour locale immédiate.
+       */
+
+      setDays((currentDays) =>
+        currentDays.map((day) =>
+          day.id === updatedDay.id
+            ? updatedDay
+            : day,
+        ),
+      )
+
+      /*
+       * Fermer la fenêtre.
+       */
+
+      setStatusEditingDay(null)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de modifier le statut.',
+      )
+    } finally {
+      setSavingStatus(false)
+    }
+  }
+
+  /*
+   * ============================================================
+   * Ouvrir la confirmation de suppression
+   * ============================================================
+   */
+
+  function handleOpenDeleteDay(day: Day) {
+    setDeletingDay(day)
+    setError('')
+  }
+
+  /*
+   * ============================================================
+   * Fermer la confirmation de suppression
+   * ============================================================
+   */
+
+  function handleCloseDeleteDay() {
+    if (deleting) {
+      return
+    }
+
+    setDeletingDay(null)
+  }
+
+  /*
+   * ============================================================
+   * Supprimer une journée
+   * ============================================================
+   */
+
+  async function handleDeleteDay() {
+    if (!deletingDay) {
+      return
+    }
+
+    try {
+      setDeleting(true)
+      setError('')
+
+      /*
+       * DELETE direct sur la table days.
+       *
+       * La policy RLS :
+       *
+       * "Admins can delete days in their rooms"
+       *
+       * empêche un utilisateur classique de supprimer
+       * une journée.
+       */
+
+      const { error: deleteError } =
+        await supabase
+          .from('days')
+          .delete()
+          .eq('id', deletingDay.id)
+
+      if (deleteError) {
+        throw new Error(
+          deleteError.message,
+        )
+      }
+
+      /*
+       * Mise à jour locale immédiate.
+       */
+
+      setDays((currentDays) =>
+        currentDays.filter(
+          (day) =>
+            day.id !== deletingDay.id,
+        ),
+      )
+
+      setDeletingDay(null)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de supprimer la journée.',
+      )
+    } finally {
+      setDeleting(false)
+    }
   }
 
   /*
@@ -410,368 +759,685 @@ export default function RoomPage() {
    */
 
   return (
-    <Container
-      maxWidth="sm"
-      sx={{ py: 5 }}
-    >
-      <Stack spacing={3}>
+    <>
+      <Container
+        maxWidth="sm"
+        sx={{ py: 5 }}
+      >
+        <Stack spacing={3}>
 
-        {/* =====================================================
-            En-tête
-            ===================================================== */}
+          {/* =====================================================
+              En-tête
+              ===================================================== */}
 
-        <Box>
-          <Typography
-            variant="h4"
-            fontWeight={700}
-          >
-            {room.name}
-          </Typography>
-
-          <Typography color="text.secondary">
-            Salle Tripix
-          </Typography>
-        </Box>
-
-        {/* =====================================================
-            Erreur
-            ===================================================== */}
-
-        {error && (
-          <Alert
-            severity="error"
-            onClose={() => setError('')}
-          >
-            {error}
-          </Alert>
-        )}
-
-        {/* =====================================================
-            Code de la salle
-            ===================================================== */}
-
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            textAlign: 'center',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.secondary"
-          >
-            CODE DE LA SALLE
-          </Typography>
-
-          <Typography
-            variant="h3"
-            fontWeight={800}
-            letterSpacing={4}
-            sx={{ mt: 1 }}
-          >
-            {room.code}
-          </Typography>
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 1 }}
-          >
-            Donne ce code aux autres joueurs.
-          </Typography>
-        </Paper>
-
-        {/* =====================================================
-            Joueurs
-            ===================================================== */}
-
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Stack spacing={2}>
+          <Box>
             <Typography
-              variant="h6"
+              variant="h4"
               fontWeight={700}
             >
-              Joueurs ({players.length})
+              {room.name}
             </Typography>
 
-            <Divider />
+            <Typography color="text.secondary">
+              Salle Tripix
+            </Typography>
+          </Box>
 
-            <Stack spacing={1.5}>
-              {players.map((player) => (
-                <Box
-                  key={player.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <Typography>
-                    {player.name}
-                  </Typography>
+          {/* =====================================================
+              Erreur
+              ===================================================== */}
 
-                  {player.user_id ===
-                    room.admin_id && (
-                    <Typography
-                      variant="body2"
-                      color="primary"
-                      fontWeight={600}
-                    >
-                      ADMIN
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-            </Stack>
-          </Stack>
-        </Paper>
-
-        {/* =====================================================
-            Classement final
-            ===================================================== */}
-
-        <Button
-          variant="contained"
-          size="large"
-          onClick={() =>
-            navigate(
-              `/room/${room.code}/ranking`,
-            )
-          }
-        >
-          Classement final
-        </Button>
-
-        {/* =====================================================
-            Journées
-            ===================================================== */}
-
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Stack spacing={2}>
-
-            {/* -------------------------------------------------
-                Titre + bouton
-                ------------------------------------------------- */}
-
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              spacing={2}
+          {error && (
+            <Alert
+              severity="error"
+              onClose={() => setError('')}
             >
+              {error}
+            </Alert>
+          )}
+
+          {/* =====================================================
+              Code de la salle
+              ===================================================== */}
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              textAlign: 'center',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              CODE DE LA SALLE
+            </Typography>
+
+            <Typography
+              variant="h3"
+              fontWeight={800}
+              letterSpacing={4}
+              sx={{ mt: 1 }}
+            >
+              {room.code}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1 }}
+            >
+              Donne ce code aux autres joueurs.
+            </Typography>
+          </Paper>
+
+          {/* =====================================================
+              Joueurs
+              ===================================================== */}
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Stack spacing={2}>
               <Typography
                 variant="h6"
                 fontWeight={700}
               >
-                Journées
+                Joueurs ({players.length})
               </Typography>
 
-              {isAdmin && (
-                <Button
-                  variant="contained"
-                  onClick={handleCreateDay}
-                >
-                  Ajouter
-                </Button>
-              )}
-            </Stack>
+              <Divider />
 
-            <Divider />
-
-            {/* -------------------------------------------------
-                Aucune journée
-                ------------------------------------------------- */}
-
-            {days.length === 0 ? (
-              <Typography color="text.secondary">
-                Aucune journée n'a encore été créée.
-              </Typography>
-            ) : (
-              <Stack spacing={2}>
-
-                {days.map((day) => (
-                  <Paper
-                    key={day.id}
-                    elevation={0}
-                    onClick={() =>
-                      handleOpenDay(day.id)
-                    }
+              <Stack spacing={1.5}>
+                {players.map((player) => (
+                  <Box
+                    key={player.id}
                     sx={{
-                      p: 2,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      cursor: 'pointer',
-                      transition:
-                        'border-color 0.2s, background-color 0.2s',
-
-                      '&:hover': {
-                        borderColor:
-                          'primary.main',
-                        backgroundColor:
-                          'action.hover',
-                      },
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    <Stack spacing={1.5}>
+                    <Typography>
+                      {player.name}
+                    </Typography>
 
-                      {/* -------------------------------------------------
-                          Informations journée
-                          ------------------------------------------------- */}
+                    {player.user_id ===
+                      room.admin_id && (
+                      <Typography
+                        variant="body2"
+                        color="primary"
+                        fontWeight={600}
+                      >
+                        ADMIN
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            </Stack>
+          </Paper>
 
-                      <Box>
+          {/* =====================================================
+              Classement final
+              ===================================================== */}
+
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() =>
+              navigate(
+                `/room/${room.code}/ranking`,
+              )
+            }
+          >
+            Classement final
+          </Button>
+
+          {/* =====================================================
+              Journées
+              ===================================================== */}
+
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Stack spacing={2}>
+
+              {/* -------------------------------------------------
+                  Titre + bouton
+                  ------------------------------------------------- */}
+
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                spacing={2}
+              >
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                >
+                  Journées
+                </Typography>
+
+                {isAdmin && (
+                  <Button
+                    variant="contained"
+                    onClick={
+                      handleCreateDay
+                    }
+                  >
+                    Ajouter
+                  </Button>
+                )}
+              </Stack>
+
+              <Divider />
+
+              {/* -------------------------------------------------
+                  Aucune journée
+                  ------------------------------------------------- */}
+
+              {days.length === 0 ? (
+                <Typography color="text.secondary">
+                  Aucune journée n'a encore été créée.
+                </Typography>
+              ) : (
+                <Stack spacing={2}>
+                  {days.map((day) => (
+                    <Paper
+                      key={day.id}
+                      elevation={0}
+                      onClick={() =>
+                        handleOpenDay(
+                          day.id,
+                        )
+                      }
+                      sx={{
+                        p: 2,
+                        border: '1px solid',
+                        borderColor:
+                          'divider',
+                        cursor: 'pointer',
+                        transition:
+                          'border-color 0.2s, background-color 0.2s',
+
+                        '&:hover': {
+                          borderColor:
+                            'primary.main',
+                          backgroundColor:
+                            'action.hover',
+                        },
+                      }}
+                    >
+                      <Stack spacing={1.5}>
+
+                        {/* ---------------------------------------
+                            Informations journée
+                            --------------------------------------- */}
+
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            fontWeight={600}
+                          >
+                            JOUR {day.day_number}
+                          </Typography>
+
+                          <Typography
+                            variant="h6"
+                            fontWeight={700}
+                          >
+                            {day.title}
+                          </Typography>
+
+                          <Typography>
+                            Thème : {day.theme}
+                          </Typography>
+                        </Box>
+
+                        {/* ---------------------------------------
+                            Statut
+                            --------------------------------------- */}
+
                         <Typography
                           variant="body2"
                           color="text.secondary"
-                          fontWeight={600}
                         >
-                          JOUR {day.day_number}
+                          Statut :{' '}
+                          {getStatusLabel(
+                            day.status,
+                          )}
                         </Typography>
 
-                        <Typography
-                          variant="h6"
-                          fontWeight={700}
-                        >
-                          {day.title}
-                        </Typography>
+                        {/* ---------------------------------------
+                            Boutons admin
+                            --------------------------------------- */}
 
-                        <Typography>
-                          Thème : {day.theme}
-                        </Typography>
-                      </Box>
+                        {isAdmin && (
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            flexWrap="wrap"
+                            useFlexGap
+                            onClick={(
+                              event,
+                            ) =>
+                              event.stopPropagation()
+                            }
+                          >
 
-                      {/* -------------------------------------------------
-                          Statut
-                          ------------------------------------------------- */}
+                            {/* ===================================
+                                Modifier
+                                =================================== */}
 
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        Statut :{' '}
-                        {getStatusLabel(
-                          day.status,
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() =>
+                                handleOpenEditDay(
+                                  day,
+                                )
+                              }
+                            >
+                              Modifier
+                            </Button>
+
+                            {/* ===================================
+                                Modifier le statut
+                                =================================== */}
+
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() =>
+                                handleOpenStatusEdit(
+                                  day,
+                                )
+                              }
+                            >
+                              Modifier le statut
+                            </Button>
+
+                            {/* ===================================
+                                Supprimer
+                                =================================== */}
+
+                            <Button
+                              variant="outlined"
+                              color="error"
+                              size="small"
+                              onClick={() =>
+                                handleOpenDeleteDay(
+                                  day,
+                                )
+                              }
+                            >
+                              Supprimer
+                            </Button>
+
+                            {/* ===================================
+                                upcoming → active
+                                =================================== */}
+
+                            {day.status ===
+                              'upcoming' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() =>
+                                  handleUpdateDayStatus(
+                                    day.id,
+                                    'active',
+                                  )
+                                }
+                              >
+                                Démarrer
+                              </Button>
+                            )}
+
+                            {/* ===================================
+                                active → submission
+                                =================================== */}
+
+                            {day.status ===
+                              'active' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() =>
+                                  handleUpdateDayStatus(
+                                    day.id,
+                                    'submission',
+                                  )
+                                }
+                              >
+                                Ouvrir les soumissions
+                              </Button>
+                            )}
+
+                            {/* ===================================
+                                submission → voting
+                                =================================== */}
+
+                            {day.status ===
+                              'submission' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() =>
+                                  handleUpdateDayStatus(
+                                    day.id,
+                                    'voting',
+                                  )
+                                }
+                              >
+                                Commencer les votes
+                              </Button>
+                            )}
+
+                            {/* ===================================
+                                voting → finished
+                                =================================== */}
+
+                            {day.status ===
+                              'voting' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() =>
+                                  handleUpdateDayStatus(
+                                    day.id,
+                                    'finished',
+                                  )
+                                }
+                              >
+                                Terminer la journée
+                              </Button>
+                            )}
+
+                          </Stack>
                         )}
-                      </Typography>
 
-                      {/* -------------------------------------------------
-                          Boutons admin
-                          ------------------------------------------------- */}
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
 
-                      {isAdmin && (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          flexWrap="wrap"
-                          useFlexGap
-                          onClick={(event) =>
-                            event.stopPropagation()
-                          }
-                        >
+            </Stack>
+          </Paper>
 
-                          {/* upcoming → active */}
+        </Stack>
+      </Container>
 
-                          {day.status ===
-                            'upcoming' && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() =>
-                                handleUpdateDayStatus(
-                                  day.id,
-                                  'active',
-                                )
-                              }
-                            >
-                              Démarrer
-                            </Button>
-                          )}
+      {/* =========================================================
+          DIALOG — MODIFIER UNE JOURNÉE
+          ========================================================= */}
 
-                          {/* active → submission */}
+      <Dialog
+        open={!!editingDay}
+        onClose={handleCloseEditDay}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Modifier la journée
+        </DialogTitle>
 
-                          {day.status ===
-                            'active' && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() =>
-                                handleUpdateDayStatus(
-                                  day.id,
-                                  'submission',
-                                )
-                              }
-                            >
-                              Ouvrir les soumissions
-                            </Button>
-                          )}
+        <DialogContent>
+          <Stack
+            spacing={2}
+            sx={{ pt: 1 }}
+          >
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              JOUR{' '}
+              {editingDay?.day_number}
+            </Typography>
 
-                          {/* submission → voting */}
+            <TextField
+              label="Nom de la journée"
+              value={editTitle}
+              onChange={(event) =>
+                setEditTitle(
+                  event.target.value,
+                )
+              }
+              fullWidth
+              autoFocus
+              disabled={savingEdit}
+            />
 
-                          {day.status ===
-                            'submission' && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() =>
-                                handleUpdateDayStatus(
-                                  day.id,
-                                  'voting',
-                                )
-                              }
-                            >
-                              Commencer les votes
-                            </Button>
-                          )}
+            <TextField
+              label="Thème"
+              value={editTheme}
+              onChange={(event) =>
+                setEditTheme(
+                  event.target.value,
+                )
+              }
+              fullWidth
+              disabled={savingEdit}
+            />
+          </Stack>
+        </DialogContent>
 
-                          {/* voting → finished */}
+        <DialogActions>
+          <Button
+            onClick={
+              handleCloseEditDay
+            }
+            disabled={savingEdit}
+          >
+            Annuler
+          </Button>
 
-                          {day.status ===
-                            'voting' && (
-                            <Button
-                              variant="contained"
-                              size="small"
-                              onClick={() =>
-                                handleUpdateDayStatus(
-                                  day.id,
-                                  'finished',
-                                )
-                              }
-                            >
-                              Terminer la journée
-                            </Button>
-                          )}
+          <Button
+            variant="contained"
+            onClick={
+              handleSaveEditDay
+            }
+            disabled={savingEdit}
+          >
+            {savingEdit
+              ? 'Enregistrement...'
+              : 'Enregistrer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                        </Stack>
-                      )}
+      {/* =========================================================
+          DIALOG — MODIFIER LE STATUT
+          ========================================================= */}
 
-                    </Stack>
-                  </Paper>
-                ))}
+      <Dialog
+        open={!!statusEditingDay}
+        onClose={handleCloseStatusEdit}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Modifier le statut
+        </DialogTitle>
 
-              </Stack>
-            )}
+        <DialogContent>
+          <Stack
+            spacing={2}
+            sx={{ pt: 1 }}
+          >
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              JOUR{' '}
+              {statusEditingDay?.day_number}
+            </Typography>
+
+            <Typography
+              fontWeight={700}
+            >
+              {statusEditingDay?.title}
+            </Typography>
+
+            <TextField
+              select
+              label="Statut"
+              value={selectedStatus}
+              onChange={(event) =>
+                setSelectedStatus(
+                  event.target.value as Day['status'],
+                )
+              }
+              fullWidth
+              disabled={savingStatus}
+              slotProps={{
+                select: {
+                  native: true,
+                },
+              }}
+            >
+              <option value="upcoming">
+                À venir
+              </option>
+
+              <option value="active">
+                En cours
+              </option>
+
+              <option value="submission">
+                Soumissions
+              </option>
+
+              <option value="slideshow">
+                Diaporama
+              </option>
+
+              <option value="voting">
+                Votes
+              </option>
+
+              <option value="finished">
+                Terminée
+              </option>
+            </TextField>
+
+            <Alert severity="info">
+              Tu peux ici revenir à une étape
+              précédente ou avancer manuellement
+              la journée.
+            </Alert>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions>
+          <Button
+            onClick={
+              handleCloseStatusEdit
+            }
+            disabled={savingStatus}
+          >
+            Annuler
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={
+              handleSaveStatusEdit
+            }
+            disabled={savingStatus}
+          >
+            {savingStatus
+              ? 'Enregistrement...'
+              : 'Enregistrer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* =========================================================
+          DIALOG — SUPPRIMER UNE JOURNÉE
+          ========================================================= */}
+
+      <Dialog
+        open={!!deletingDay}
+        onClose={
+          handleCloseDeleteDay
+        }
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Supprimer la journée ?
+        </DialogTitle>
+
+        <DialogContent>
+          <Stack spacing={2}>
+
+            <Typography>
+              Tu es sur le point de supprimer :
+            </Typography>
+
+            <Typography
+              fontWeight={700}
+            >
+              Jour {deletingDay?.day_number} —{' '}
+              {deletingDay?.title}
+            </Typography>
+
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              Cette action est définitive.
+              Si cette journée contient déjà
+              des données associées, la base de
+              données peut empêcher sa suppression.
+            </Typography>
 
           </Stack>
-        </Paper>
+        </DialogContent>
 
-      </Stack>
-    </Container>
+        <DialogActions>
+          <Button
+            onClick={
+              handleCloseDeleteDay
+            }
+            disabled={deleting}
+          >
+            Annuler
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            onClick={
+              handleDeleteDay
+            }
+            disabled={deleting}
+          >
+            {deleting
+              ? 'Suppression...'
+              : 'Supprimer'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
 
@@ -793,6 +1459,9 @@ function getStatusLabel(
 
     case 'submission':
       return 'Soumissions'
+
+    case 'slideshow':
+      return 'Diaporama'
 
     case 'voting':
       return 'Votes'
