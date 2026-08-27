@@ -679,3 +679,251 @@ export async function submitVote(
     points: data.points,
   }
 }
+
+export interface VotingProgress {
+  total_players: number
+  completed_players: number
+  all_votes_completed: boolean
+}
+
+export async function getVotingProgress(
+  dayId: string,
+): Promise<VotingProgress> {
+  const { data, error } = await supabase.rpc(
+    'get_voting_progress',
+    {
+      target_day_id: dayId,
+    },
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const result = Array.isArray(data)
+    ? data[0]
+    : data
+
+  if (!result) {
+    throw new Error(
+      'Impossible de récupérer la progression des votes.',
+    )
+  }
+
+  return result
+}
+
+export interface DayResult {
+  photo_id: string
+  player_id: string
+  player_name: string
+  storage_path: string
+  photo_number: number
+  total_points: number
+  vote_count: number
+  average_points: number
+}
+
+export async function getDayResults(
+  dayId: string,
+): Promise<DayResult[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_day_results',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+export async function finishDayVoting(
+  dayId: string,
+): Promise<Day> {
+  const { data, error } =
+    await supabase.rpc(
+      'finish_day_voting',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}
+
+export async function getDay(
+  dayId: string,
+): Promise<Day> {
+  const { data, error } =
+    await supabase
+      .from('days')
+      .select(`
+        id,
+        room_id,
+        day_number,
+        title,
+        theme,
+        status,
+        created_at
+      `)
+      .eq('id', dayId)
+      .single()
+
+  if (error) {
+    throw new Error(
+      'Impossible de récupérer la journée.',
+    )
+  }
+
+  return data
+}
+
+export async function getRoomById(
+  roomId: string,
+): Promise<Room> {
+  const { data, error } =
+    await supabase
+      .from('rooms')
+      .select(
+        'id, name, code, admin_id',
+      )
+      .eq('id', roomId)
+      .single()
+
+  if (error) {
+    throw new Error(
+      'Impossible de récupérer la salle.',
+    )
+  }
+
+  return data
+}
+
+/* ============================================================
+   RESULTS / RANKINGS
+   ============================================================ */
+
+export interface DayPhotoRanking {
+  photo_id: string
+  player_id: string
+  player_name: string
+  photo_number: number
+  storage_path: string
+  total_points: number
+}
+
+export interface DayPlayerRanking {
+  player_id: string
+  player_name: string
+  total_points: number
+}
+
+export interface FinalPlayerRanking {
+  player_id: string
+  player_name: string
+  total_points: number
+}
+
+/**
+ * Classement des photos d'une journée.
+ *
+ * Les photos sont classées selon la somme
+ * des points reçus pendant les votes.
+ */
+export async function getDayPhotoRanking(
+  dayId: string,
+): Promise<DayPhotoRanking[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_day_photo_ranking',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Classement des joueurs pour une journée.
+ *
+ * Le score correspond à la somme des points
+ * reçus par les photos du joueur.
+ */
+export async function getDayPlayerRanking(
+  dayId: string,
+): Promise<DayPlayerRanking[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_day_player_ranking',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Classement final de la salle.
+ *
+ * Seules les journées terminées sont comptabilisées.
+ */
+export async function getFinalRoomRanking(
+  roomId: string,
+): Promise<FinalPlayerRanking[]> {
+  const { data, error } =
+    await supabase.rpc(
+      'get_final_room_ranking',
+      {
+        target_room_id: roomId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? []
+}
+
+/**
+ * Termine définitivement une journée.
+ *
+ * La vérification de l'administrateur et
+ * de la fin des votes est effectuée côté PostgreSQL.
+ */
+export async function finishDay(
+  dayId: string,
+): Promise<Day> {
+  const { data, error } =
+    await supabase.rpc(
+      'finish_day',
+      {
+        target_day_id: dayId,
+      },
+    )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
+}

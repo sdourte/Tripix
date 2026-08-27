@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  LinearProgress,
   Rating,
   Stack,
   Typography,
@@ -35,6 +36,7 @@ import {
   getMyVotes,
   getPhotoUrl,
   submitVote,
+  getVotingProgress,
   type VotingPhoto,
 } from '../services/roomService'
 
@@ -42,6 +44,19 @@ interface DisplayVotingPhoto
   extends VotingPhoto {
   url: string
   isOwn: boolean
+}
+
+/*
+ * Progression globale du vote.
+ *
+ * Cette interface est volontairement définie ici
+ * afin de ne pas dépendre d'un type exporté
+ * supplémentaire dans roomService.
+ */
+interface VotingProgress {
+  total_players: number
+  completed_players: number
+  all_votes_completed: boolean
 }
 
 export default function VotingPage() {
@@ -69,9 +84,12 @@ export default function VotingPage() {
   const [selectedPhoto, setSelectedPhoto] =
     useState<DisplayVotingPhoto | null>(null)
 
+  const [votingProgress, setVotingProgress] =
+    useState<VotingProgress | null>(null)
+
   /*
    * ============================================================
-   * CHARGEMENT
+   * CHARGEMENT INITIAL
    * ============================================================
    */
 
@@ -84,6 +102,7 @@ export default function VotingPage() {
       }
 
       try {
+        setLoading(true)
         setError('')
 
         /*
@@ -100,6 +119,14 @@ export default function VotingPage() {
           await getMyVotes(dayId)
 
         /*
+         * Récupérer la progression globale.
+         */
+        const progress =
+          await getVotingProgress(dayId)
+
+        setVotingProgress(progress)
+
+        /*
          * S'il n'y a aucune photo,
          * on affiche simplement une galerie vide.
          */
@@ -111,11 +138,6 @@ export default function VotingPage() {
 
         /*
          * Récupérer le joueur connecté.
-         *
-         * IMPORTANT :
-         * getCurrentPlayerForDay() s'occupe lui-même
-         * de retrouver le room_id correspondant
-         * au dayId.
          */
         const currentPlayer =
           await getCurrentPlayerForDay(dayId)
@@ -187,6 +209,64 @@ export default function VotingPage() {
 
   /*
    * ============================================================
+   * ACTUALISATION DE LA PROGRESSION
+   * ============================================================
+   *
+   * On vérifie régulièrement si les autres participants
+   * ont terminé leur vote.
+   *
+   * Cela permet notamment de voir automatiquement
+   * quand tout le monde a terminé sans devoir recharger
+   * manuellement la page.
+   */
+
+  useEffect(() => {
+    if (!dayId) {
+      return
+    }
+
+    let cancelled = false
+
+    async function refreshProgress() {
+      try {
+        const progress =
+          await getVotingProgress(dayId)
+
+        if (!cancelled) {
+          setVotingProgress(progress)
+        }
+      } catch (err) {
+        console.error(
+          'Erreur actualisation progression:',
+          err,
+        )
+      }
+    }
+
+    /*
+     * Première vérification immédiate.
+     */
+    refreshProgress()
+
+    /*
+     * Puis vérification régulière.
+     */
+    const intervalId =
+      window.setInterval(
+        refreshProgress,
+        3000,
+      )
+
+    return () => {
+      cancelled = true
+      window.clearInterval(
+        intervalId,
+      )
+    }
+  }, [dayId])
+
+  /*
+   * ============================================================
    * VOTE
    * ============================================================
    */
@@ -206,6 +286,10 @@ export default function VotingPage() {
       return
     }
 
+    if (!dayId) {
+      return
+    }
+
     try {
       setSavingPhotoId(photo.id)
       setError('')
@@ -222,6 +306,15 @@ export default function VotingPage() {
         ...current,
         [photo.id]: value,
       }))
+
+      /*
+       * Recharger immédiatement la progression
+       * après le vote.
+       */
+      const progress =
+        await getVotingProgress(dayId)
+
+      setVotingProgress(progress)
     } catch (err) {
       console.error(
         'Erreur vote:',
@@ -240,7 +333,7 @@ export default function VotingPage() {
 
   /*
    * ============================================================
-   * COMPTEUR
+   * COMPTEURS
    * ============================================================
    */
 
@@ -259,6 +352,24 @@ export default function VotingPage() {
     votablePhotos.length > 0 &&
     votedCount ===
       votablePhotos.length
+
+  const personalProgress =
+    votablePhotos.length > 0
+      ? (votedCount /
+          votablePhotos.length) *
+        100
+      : 0
+
+  const globalProgress =
+    votingProgress &&
+    votingProgress.total_players > 0
+      ? (votingProgress.completed_players /
+          votingProgress.total_players) *
+        100
+      : 0
+
+  const everyoneFinished =
+    votingProgress?.all_votes_completed === true
 
   /*
    * ============================================================
@@ -283,11 +394,14 @@ export default function VotingPage() {
 
   /*
    * ============================================================
-   * ERREUR
+   * ERREUR BLOQUANTE
    * ============================================================
    */
 
-  if (error && photos.length === 0) {
+  if (
+    error &&
+    photos.length === 0
+  ) {
     return (
       <Container
         maxWidth="md"
@@ -319,6 +433,10 @@ export default function VotingPage() {
       >
         <Stack spacing={3}>
 
+          {/* ==================================================
+              TITRE
+              ================================================== */}
+
           <Box>
             <Typography
               variant="h4"
@@ -337,6 +455,10 @@ export default function VotingPage() {
             </Typography>
           </Box>
 
+          {/* ==================================================
+              ERREUR
+              ================================================== */}
+
           {error && (
             <Alert
               severity="error"
@@ -348,39 +470,178 @@ export default function VotingPage() {
             </Alert>
           )}
 
+          {/* ==================================================
+              PROGRESSION PERSONNELLE
+              ================================================== */}
+
           <Card>
             <CardContent>
-              <Stack
-                direction={{
-                  xs: 'column',
-                  sm: 'row',
-                }}
-                justifyContent="space-between"
-                alignItems={{
-                  xs: 'flex-start',
-                  sm: 'center',
-                }}
-                spacing={1}
-              >
-                <Typography fontWeight={700}>
-                  Progression
-                </Typography>
+              <Stack spacing={2}>
 
-                <Typography
-                  color={
-                    allVotesDone
-                      ? 'success.main'
-                      : 'text.secondary'
-                  }
-                  fontWeight={700}
+                <Stack
+                  direction={{
+                    xs: 'column',
+                    sm: 'row',
+                  }}
+                  justifyContent="space-between"
+                  alignItems={{
+                    xs: 'flex-start',
+                    sm: 'center',
+                  }}
+                  spacing={1}
                 >
-                  {votedCount} /{' '}
-                  {votablePhotos.length}{' '}
-                  photos notées
-                </Typography>
+                  <Typography fontWeight={700}>
+                    Ta progression
+                  </Typography>
+
+                  <Typography
+                    color={
+                      allVotesDone
+                        ? 'success.main'
+                        : 'text.secondary'
+                    }
+                    fontWeight={700}
+                  >
+                    {votedCount} /{' '}
+                    {votablePhotos.length}{' '}
+                    photos notées
+                  </Typography>
+                </Stack>
+
+                <LinearProgress
+                  variant="determinate"
+                  value={personalProgress}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                  }}
+                />
+
+                {allVotesDone && (
+                  <Alert
+                    severity="success"
+                  >
+                    Tous tes votes sont
+                    enregistrés.
+                  </Alert>
+                )}
+
               </Stack>
             </CardContent>
           </Card>
+
+          {/* ==================================================
+              PROGRESSION GLOBALE
+              ================================================== */}
+
+          {votingProgress && (
+            <Card>
+              <CardContent>
+                <Stack spacing={2}>
+
+                  <Stack
+                    direction={{
+                      xs: 'column',
+                      sm: 'row',
+                    }}
+                    justifyContent="space-between"
+                    alignItems={{
+                      xs: 'flex-start',
+                      sm: 'center',
+                    }}
+                    spacing={1}
+                  >
+                    <Typography fontWeight={700}>
+                      Progression des participants
+                    </Typography>
+
+                    <Typography
+                      color={
+                        everyoneFinished
+                          ? 'success.main'
+                          : 'text.secondary'
+                      }
+                      fontWeight={700}
+                    >
+                      {
+                        votingProgress.completed_players
+                      }{' '}
+                      /{' '}
+                      {
+                        votingProgress.total_players
+                      }{' '}
+                      participants
+                    </Typography>
+                  </Stack>
+
+                  <LinearProgress
+                    variant="determinate"
+                    value={globalProgress}
+                    sx={{
+                      height: 8,
+                      borderRadius: 4,
+                    }}
+                  />
+
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                  >
+                    {everyoneFinished
+                      ? 'Tous les participants ont terminé leur vote.'
+                      : 'En attente des autres participants...'}
+                  </Typography>
+
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ==================================================
+              MESSAGE FIN DU VOTE
+              ================================================== */}
+
+          {everyoneFinished && (
+            <Card
+              sx={{
+                border: '2px solid',
+                borderColor:
+                  'success.main',
+              }}
+            >
+              <CardContent>
+                <Stack
+                  spacing={2}
+                  alignItems="center"
+                  textAlign="center"
+                >
+                  <Typography
+                    variant="h5"
+                    fontWeight={800}
+                    color="success.main"
+                  >
+                    Le vote est terminé
+                  </Typography>
+
+                  <Typography
+                    color="text.secondary"
+                  >
+                    Tous les participants ont
+                    enregistré leurs votes.
+                    L'administrateur doit
+                    maintenant terminer la
+                    journée pour clôturer les
+                    résultats.
+                  </Typography>
+
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ==================================================
+              GALERIE
+              ================================================== */}
 
           {photos.length === 0 ? (
             <Card>
@@ -407,117 +668,147 @@ export default function VotingPage() {
               }}
             >
               {photos.map((photo) => {
-                const vote = votes[photo.id]
+                const vote =
+                  votes[photo.id]
 
                 return (
-                    <Card
+                  <Card
                     key={photo.id}
                     sx={{
-                        overflow: 'hidden',
-                        opacity: photo.isOwn ? 0.55 : 1,
+                      overflow: 'hidden',
+                      opacity:
+                        photo.isOwn
+                          ? 0.55
+                          : 1,
                     }}
-                    >
-                    {/* Image cliquable pour l'agrandir */}
+                  >
+
+                    {/* IMAGE CLIQUABLE */}
+
                     <CardActionArea
-                        disabled={false}
-                        onClick={() =>
-                        setSelectedPhoto(photo)
-                        }
+                      onClick={() =>
+                        setSelectedPhoto(
+                          photo,
+                        )
+                      }
                     >
-                        <CardMedia
+                      <CardMedia
                         component="img"
                         image={photo.url}
-                        alt={`Photo de ${photo.player_name}`}
+                        alt=""
                         sx={{
-                            height: {
+                          height: {
                             xs: 240,
                             sm: 260,
-                            },
-                            objectFit: 'cover',
-                            filter: photo.isOwn
-                            ? 'grayscale(100%)'
-                            : 'none',
+                          },
+                          objectFit:
+                            'cover',
+                          filter:
+                            photo.isOwn
+                              ? 'grayscale(100%)'
+                              : 'none',
                         }}
-                        />
+                      />
                     </CardActionArea>
 
                     <CardContent>
-                        <Typography
-                        fontWeight={700}
-                        gutterBottom
-                        >
-                        {photo.isOwn ? 'Ta photo' : ''}
-                        </Typography>
 
-                        {photo.isOwn ? (
+                      {/* NOM UNIQUEMENT POUR SA PROPRE PHOTO */}
+
+                      {photo.isOwn && (
                         <Typography
-                            variant="body2"
-                            color="text.secondary"
+                          fontWeight={700}
+                          gutterBottom
                         >
-                            Tu ne peux pas voter pour ta
-                            propre photo.
+                          Ta photo
                         </Typography>
-                        ) : (
+                      )}
+
+                      {photo.isOwn ? (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                        >
+                          Tu ne peux pas voter
+                          pour ta propre photo.
+                        </Typography>
+                      ) : (
                         <Stack spacing={1}>
-                            <Typography
+
+                          <Typography
                             variant="body2"
                             color="text.secondary"
-                            >
+                          >
                             Ta note
-                            </Typography>
+                          </Typography>
 
-                            <Rating
-                            value={vote ?? null}
+                          <Rating
+                            value={
+                              vote ?? null
+                            }
                             max={5}
                             precision={1}
                             size="large"
                             onChange={(
-                                _event,
-                                value,
+                              _event,
+                              value,
                             ) => {
-                                if (value !== null) {
+                              if (
+                                value !== null
+                              ) {
                                 handleVote(
-                                    photo,
-                                    value,
+                                  photo,
+                                  value,
                                 )
-                                }
+                              }
                             }}
                             disabled={
-                                savingPhotoId ===
-                                photo.id
+                              savingPhotoId ===
+                                photo.id ||
+                              everyoneFinished
                             }
                             sx={{
-                                fontSize: '2rem',
-
-                                '& .MuiRating-icon': {
-                                flexShrink: 0,
-                                },
+                              fontSize:
+                                '2rem',
                             }}
-                            />
+                          />
 
-                            {savingPhotoId ===
+                          {savingPhotoId ===
                             photo.id && (
                             <Typography
-                                variant="caption"
-                                color="text.secondary"
+                              variant="caption"
+                              color="text.secondary"
                             >
-                                Enregistrement...
+                              Enregistrement...
                             </Typography>
-                            )}
+                          )}
+
                         </Stack>
-                        )}
+                      )}
+
                     </CardContent>
-                    </Card>
+                  </Card>
                 )
-                })}
+              })}
             </Box>
           )}
 
-          {allVotesDone && (
-            <Alert severity="success">
-              Tous tes votes sont enregistrés.
-            </Alert>
-          )}
+          {/* ==================================================
+              MESSAGE FIN PERSONNELLE
+              ================================================== */}
+
+          {allVotesDone &&
+            !everyoneFinished && (
+              <Alert severity="success">
+                Tous tes votes sont enregistrés.
+                Tu peux encore modifier tes notes
+                pendant que le vote reste ouvert.
+              </Alert>
+            )}
+
+          {/* ==================================================
+              RETOUR
+              ================================================== */}
 
           <Box
             sx={{
@@ -538,11 +829,9 @@ export default function VotingPage() {
         </Stack>
       </Container>
 
-      {/*
-       * =========================================================
-       * PHOTO AGRANDIE
-       * =========================================================
-       */}
+      {/* ========================================================
+          PHOTO AGRANDIE
+          ======================================================== */}
 
       <Dialog
         open={Boolean(selectedPhoto)}
@@ -552,29 +841,29 @@ export default function VotingPage() {
         maxWidth="lg"
         fullWidth
       >
-
         <DialogTitle>
-        {selectedPhoto?.isOwn
+          {selectedPhoto?.isOwn
             ? 'Ta photo'
             : 'Photo'}
 
-        <IconButton
+          <IconButton
             onClick={() =>
-            setSelectedPhoto(null)
+              setSelectedPhoto(null)
             }
             sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
+              position: 'absolute',
+              right: 8,
+              top: 8,
             }}
-        >
+          >
             <CloseIcon />
-        </IconButton>
+          </IconButton>
         </DialogTitle>
 
         <DialogContent>
           {selectedPhoto && (
             <Stack spacing={3}>
+
               <Box
                 component="img"
                 src={selectedPhoto.url}
@@ -590,39 +879,43 @@ export default function VotingPage() {
                 <Box
                   sx={{
                     display: 'flex',
-                    justifyContent:
-                      'center',
+                    justifyContent: 'center',
                   }}
                 >
                   <Rating
                     value={
-                        votes[selectedPhoto.id] ??
-                        null
+                      votes[
+                        selectedPhoto.id
+                      ] ?? null
                     }
                     max={5}
                     precision={1}
                     size="large"
                     onChange={(
-                        _event,
-                        value,
+                      _event,
+                      value,
                     ) => {
-                        if (value !== null) {
+                      if (
+                        value !== null
+                      ) {
                         handleVote(
-                            selectedPhoto,
-                            value,
+                          selectedPhoto,
+                          value,
                         )
-                        }
+                      }
                     }}
                     disabled={
-                        savingPhotoId ===
-                        selectedPhoto.id
+                      savingPhotoId ===
+                        selectedPhoto.id ||
+                      everyoneFinished
                     }
                     sx={{
-                        fontSize: '2rem',
+                      fontSize: '2rem',
                     }}
-                    />
+                  />
                 </Box>
               )}
+
             </Stack>
           )}
         </DialogContent>

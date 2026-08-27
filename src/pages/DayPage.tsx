@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase'
 
 import {
   addPhoto,
+  finishDay,
   getCurrentPlayer,
   getPhotoUrl,
   getPlayerPhotos,
@@ -121,6 +122,11 @@ export default function DayPage() {
   const [
     replacing,
     setReplacing,
+  ] = useState(false)
+
+  const [
+    finishingDay,
+    setFinishingDay,
   ] = useState(false)
 
   const [
@@ -1041,12 +1047,59 @@ export default function DayPage() {
       return
     }
 
-    /*
-     * Route vers SlideshowPage.
-     */
     navigate(
       `/room/${code}/day/${dayId}/slideshow`,
     )
+  }
+
+  /* ==========================================================
+     FINISH DAY
+     ========================================================== */
+
+  async function handleFinishDay() {
+    if (!day || !isAdmin) {
+      return
+    }
+
+    if (
+      day.status !==
+      'voting'
+    ) {
+      setError(
+        'La journée ne peut être terminée que pendant la phase de vote.',
+      )
+      return
+    }
+
+    try {
+      setFinishingDay(true)
+      setError('')
+      setSuccess('')
+
+      const updatedDay =
+        await finishDay(
+          day.id,
+        )
+
+      setDay(updatedDay)
+
+      setSuccess(
+        'La journée est maintenant terminée. Les résultats sont disponibles.',
+      )
+    } catch (err) {
+      console.error(
+        'Erreur fin de journée:',
+        err,
+      )
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Impossible de terminer la journée.',
+      )
+    } finally {
+      setFinishingDay(false)
+    }
   }
 
   /* ==========================================================
@@ -1518,6 +1571,7 @@ export default function DayPage() {
                                   'hidden',
                               }}
                             >
+
                               {/* IMAGE */}
 
                               <Box
@@ -1703,6 +1757,7 @@ export default function DayPage() {
                                   </Button>
                                 )}
                               </Box>
+
                             </Box>
                           ),
                         )}
@@ -1877,6 +1932,7 @@ export default function DayPage() {
             }}
           >
             <Stack spacing={2}>
+
               <Box>
                 <Typography
                   variant="h6"
@@ -1904,6 +1960,48 @@ export default function DayPage() {
               >
                 Ouvrir la galerie de vote
               </Button>
+
+              {isAdmin && (
+                <Box
+                  sx={{
+                    mt: 2,
+                    pt: 2,
+                    borderTop:
+                      '1px solid',
+                    borderColor:
+                      'divider',
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
+                      Une fois que tous les
+                      participants ont terminé
+                      leur vote, tu peux clôturer
+                      définitivement la journée.
+                    </Typography>
+
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      size="large"
+                      disabled={
+                        finishingDay
+                      }
+                      onClick={
+                        handleFinishDay
+                      }
+                    >
+                      {finishingDay
+                        ? 'Clôture en cours...'
+                        : 'Terminer la journée'}
+                    </Button>
+                  </Stack>
+                </Box>
+              )}
+
             </Stack>
           </Paper>
         )}
@@ -1921,28 +2019,42 @@ export default function DayPage() {
               border:
                 '1px solid',
               borderColor:
-                'divider',
+                'success.main',
               textAlign:
                 'center',
             }}
           >
-            <Typography
-              variant="h6"
-              fontWeight={700}
-            >
-              Journée terminée
-            </Typography>
+            <Stack spacing={2}>
 
-            <Typography
-              color="text.secondary"
-              sx={{
-                mt: 1,
-              }}
-            >
-              Les résultats
-              seront bientôt
-              disponibles.
-            </Typography>
+              <Typography
+                variant="h6"
+                fontWeight={700}
+                color="success.main"
+              >
+                Journée terminée
+              </Typography>
+
+              <Typography
+                color="text.secondary"
+              >
+                Les votes sont clôturés.
+                Le classement de la journée
+                est maintenant disponible.
+              </Typography>
+
+              <Button
+                variant="contained"
+                size="large"
+                onClick={() =>
+                  navigate(
+                    `/day/${day.id}/results`,
+                  )
+                }
+              >
+                Voir les résultats
+              </Button>
+
+            </Stack>
           </Paper>
         )}
 

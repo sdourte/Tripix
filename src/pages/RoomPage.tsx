@@ -473,6 +473,16 @@ export default function RoomPage() {
           </Stack>
         </Paper>
 
+        <Button
+          variant="contained"
+          size="large"
+          onClick={() =>
+            navigate(`/room/${room.code}/ranking`)
+          }
+        >
+          Classement final
+        </Button>
+
         {/* =====================================================
             Journées
             ===================================================== */}

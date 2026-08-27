@@ -10,6 +10,9 @@ import RoomPage from './pages/RoomPage'
 import DayPage from './pages/DayPage'
 import SlideshowPage from './pages/SlideshowPage'
 import VotingPage from './pages/VotingPage'
+import ResultsPage from './pages/ResultsPage'
+import DayResultsPage from './pages/DayResultsPage'
+import FinalRankingPage from './pages/FinalRankingPage'
 
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -84,6 +87,21 @@ export default function App() {
         <Route
           path="/day/:dayId/voting"
           element={<VotingPage />}
+        />
+
+        <Route
+          path="/day/:dayId/results"
+          element={<ResultsPage />}
+        />
+
+        <Route
+          path="/day/:dayId/results"
+          element={<DayResultsPage />}
+        />
+
+        <Route
+          path="/room/:code/ranking"
+          element={<FinalRankingPage />}
         />
 
       </Routes>
