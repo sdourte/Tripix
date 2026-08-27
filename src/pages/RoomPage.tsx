@@ -34,6 +34,7 @@ import { getCurrentUser } from '../services/authService'
 
 export default function RoomPage() {
   const { code } = useParams<{ code: string }>()
+  console.log('RoomPage - code reçu :', code)
   const navigate = useNavigate()
 
   const [room, setRoom] = useState<Room | null>(null)

@@ -33,12 +33,15 @@ export default function JoinRoomPage() {
     try {
       setLoading(true)
 
-      const room = await joinRoom(
-        roomCode.trim(),
+      const normalizedRoomCode =
+        roomCode.trim().toUpperCase()
+
+      await joinRoom(
+        normalizedRoomCode,
         playerName.trim(),
       )
 
-      navigate(`/room/${room.code}`)
+      navigate(`/room/${normalizedRoomCode}`)
     } catch (err) {
       setError(
         err instanceof Error
